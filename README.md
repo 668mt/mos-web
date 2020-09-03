@@ -1,4 +1,4 @@
-# antd-sdudy
+# mos-web
 
 ## Project setup
 ```
