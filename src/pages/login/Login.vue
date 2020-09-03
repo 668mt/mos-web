@@ -1,0 +1,190 @@
+<template>
+	<div class="container">
+		<div class="content">
+			<div class="top">
+				<div class="header">
+					<img alt="logo" class="logo" src="@/assets/img/vue-antd-logo.png"/>
+					<span class="title">MOS</span>
+				</div>
+				<div class="desc">MOS存储服务管理</div>
+			</div>
+			<div class="login">
+				<a-form
+						id="components-form-demo-normal-login"
+						:form="form"
+						class="login-form"
+						@submit="handleSubmit"
+				>
+					<a-form-item>
+						<a-input
+								v-decorator="[
+          'username',
+          { rules: [{ required: true, message: '请输入用户名!' }] },
+        ]"
+								placeholder="用户名"
+						>
+							<a-icon slot="prefix" type="user" style="color: rgba(0,0,0,.25)"/>
+						</a-input>
+					</a-form-item>
+					<a-form-item>
+						<a-input
+								v-decorator="[
+          'password',
+          { rules: [{ required: true, message: '请输入密码!' }] },
+        ]"
+								type="password"
+								placeholder="密码"
+						>
+							<a-icon slot="prefix" type="lock" style="color: rgba(0,0,0,.25)"/>
+						</a-input>
+					</a-form-item>
+					<a-form-item>
+						<!--				<a-checkbox-->
+						<!--						v-decorator="[-->
+						<!--          'remember',-->
+						<!--          {-->
+						<!--            valuePropName: 'checked',-->
+						<!--            initialValue: true,-->
+						<!--          },-->
+						<!--        ]"-->
+						<!--				>-->
+						<!--					Remember me-->
+						<!--				</a-checkbox>-->
+						<!--				<a class="login-form-forgot" href="">-->
+						<!--					Forgot password-->
+						<!--				</a>-->
+						<a-button type="primary" html-type="submit" class="login-form-button">
+							登录
+						</a-button>
+						<!--				Or-->
+						<!--				<a href="">-->
+						<!--					register now!-->
+						<!--				</a>-->
+					</a-form-item>
+				</a-form>
+			</div>
+		</div>
+	</div>
+</template>
+
+<script>
+    export default {
+        beforeCreate() {
+            this.form = this.$form.createForm(this, {name: 'normal_login'});
+        },
+        methods: {
+            handleSubmit(e) {
+                e.preventDefault();
+                this.form.validateFields((err, values) => {
+                    if (!err) {
+                        this.$http.post("/login", {
+                            ...values
+                        }, {
+                            transformRequest: [this.$mt.transformFormData],
+                        }).then(response => {
+                            if (response.data.status === 'ok') {
+                                // this.$store.commit('account/setuser', {
+                                //     name: 'test'
+                                // });
+                                window.localStorage.setItem("currentUser", JSON.stringify(response.data.result));
+                                this.$message.success(response.data.message);
+                                this.$router.replace({
+                                    name: '用户管理'
+                                })
+                            } else {
+                                this.$message.error(response.data.message);
+                            }
+                        });
+                    }
+                });
+            },
+        },
+    };
+</script>
+<style lang="less" scoped>
+	#components-form-demo-normal-login .login-form {
+		max-width: 300px;
+	}
+	
+	#components-form-demo-normal-login .login-form-button {
+		width: 100%;
+	}
+	
+	.container {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		overflow: auto;
+		background: #f0f2f5 url('https://gw.alipayobjects.com/zos/rmsportal/TVYTbAXWheQpRcWDaDMu.svg') no-repeat center 110px;
+		background-size: 100%;
+		
+		.content {
+			padding: 32px 0;
+			flex: 1;
+			@media (min-width: 768px) {
+				padding: 112px 0 24px;
+			}
+			
+			.top {
+				text-align: center;
+				
+				.header {
+					height: 44px;
+					line-height: 44px;
+					
+					a {
+						text-decoration: none;
+					}
+					
+					.logo {
+						height: 44px;
+						vertical-align: top;
+						margin-right: 16px;
+					}
+					
+					.title {
+						font-size: 33px;
+						color: rgba(0, 0, 0, .85);
+						font-family: 'Myriad Pro', 'Helvetica Neue', Arial, Helvetica, sans-serif;
+						font-weight: 600;
+						position: relative;
+						top: 2px;
+					}
+				}
+				
+				.desc {
+					font-size: 14px;
+					color: rgba(0, 0, 0, .45);
+					margin-top: 12px;
+					margin-bottom: 40px;
+				}
+			}
+			
+			.login {
+				width: 368px;
+				margin: 0 auto;
+				@media screen and (max-width: 576px) {
+					width: 95%;
+				}
+				@media screen and (max-width: 320px) {
+					.captcha-button {
+						font-size: 14px;
+					}
+				}
+				
+				.icon {
+					font-size: 24px;
+					color: rgba(0, 0, 0, 0.2);
+					margin-left: 16px;
+					vertical-align: middle;
+					cursor: pointer;
+					transition: color 0.3s;
+					
+					&:hover {
+						color: #1890ff;
+					}
+				}
+			}
+		}
+	}
+</style>
