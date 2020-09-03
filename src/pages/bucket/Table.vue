@@ -4,7 +4,7 @@
 			<a-table :columns="columns" :data-source="data" :pagination="pagination"
 					 :rowKey="(row,index) => {return index}"
 					 @change="handleTableChange">
-				<a slot="pathname" slot-scope="text" target="_blank" :href="baseUrl+'/oss'+text">{{ text }}</a>
+				<a slot="pathname" slot-scope="text" target="_blank" :href="baseUrl+'/mos'+text">{{ text }}</a>
 				<span slot="action">
 					<a>编辑</a>
 					<a-divider type="vertical"/>

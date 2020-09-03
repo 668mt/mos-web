@@ -5,7 +5,7 @@
 			<a-menu theme="dark" mode="inline" :default-selected-keys="['/table']" :selectedKeys="selectedKeys"
 					@select="menuSelect">
 				<a-sub-menu :key="menu.path" v-for="menu in menus">
-					<span slot="title"><a-icon type="mail"/><span>oss</span></span>
+					<span slot="title"><a-icon type="mail"/><span>mos</span></span>
 					<a-menu-item v-for="item in menu.children" :key="item.path">
 						<router-link :to="item.path">
 							<a-icon v-if="item.icon != null" :type="item.icon"/>
@@ -33,9 +33,9 @@
 </template>
 <script>
     const menus = [{
-        name: 'oss',
+        name: 'mos',
         icon: 'user',
-        path: '/oss',
+        path: '/mos',
         children: [{
             name: 'Home',
             path: '/home',

@@ -29,7 +29,7 @@
 				<span v-else>
 					<span v-if="record.fileName">
 						<a-icon type="file"/>
-						<a class="resource-link" :href="`/oss/${currentBucket}${record.pathname}`" target="_blank">
+						<a class="resource-link" :href="`/mos/${currentBucket}${record.pathname}`" target="_blank">
 							{{record.fileName}}
 						</a>
 					</span>

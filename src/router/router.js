@@ -8,7 +8,8 @@ import User from "../pages/user/User";
 import Resource from "../pages/resource/Resource";
 
 Vue.use(Router);
-const user = JSON.parse(window.localStorage.getItem("currentUser"));
+let user = JSON.parse(window.localStorage.getItem("currentUser"));
+user = user || {};
 
 export default new Router({
     routes: [
