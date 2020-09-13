@@ -4,20 +4,21 @@
 			<a-button type="primary" @click="onAdd">添加</a-button>
 		</a-row>
 		<a-table :columns="columns" :data-source="data" :pagination="pagination"
-				 :rowKey="(row,index) => {return index}"
+				 :rowKey="(row,index) => {return row.id}"
+				 :expandedRowKeys="expandedRowKeys"
 				 @expand="expand"
 				 @change="handleTableChange">
 			<span slot="action" slot-scope="text,record">
 				<a @click="onEdit(record)">编辑</a>
 				<a-divider type="vertical"/>
-				<a-popconfirm
-						title="更新秘钥可能导致已有的服务不可用，是否更新秘钥?"
-						ok-text="是"
-						cancel-text="否"
-						@confirm="onGenerate(record)"
-				>
-					<a style="color:red">更新秘钥</a>
-				</a-popconfirm>
+				<!--				<a-popconfirm-->
+				<!--						title="是否新增秘钥?"-->
+				<!--						ok-text="是"-->
+				<!--						cancel-text="否"-->
+				<!--						@confirm="onGenerate(record)"-->
+				<!--				>-->
+					<a style="color:red" @click="onGenerate(record)">新增秘钥</a>
+				<!--				</a-popconfirm>-->
 				<a-divider type="vertical"/>
 				<a-popconfirm
 						title="是否删除?"
@@ -28,25 +29,42 @@
 					<a style="color:red;">删除</a>
 				</a-popconfirm>
 			</span>
-			<a-table slot="expandedRowRender"
-					 :rowKey="(row,index) => {return row.openId}"
-					 :columns="innerColumns"
-					 :data-source="innerData"
-					 :pagination="false">
+			<!--			<template slot="expandedRowRender"-->
+			<!--					  slot-scope="record,index">-->
+			<!--				{{index}}{{record}}-->
+			<a-table
+					slot="expandedRowRender"
+					:rowKey="(row,index) => {return row.openId}"
+					:columns="innerColumns"
+					:data-source="innerData"
+					:pagination="false">
 				<a-tooltip slot="publicKey" slot-scope="text">
 					<template slot="title">
 						{{text}}
 					</template>
-					<div style="width:200px;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">{{text}}</div>
+					<div style="width:200px;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">{{text}}
+					</div>
 				</a-tooltip>
 				<a-tooltip slot="privateKey" slot-scope="text">
 					<template slot="title">
 						{{text}}
 					</template>
-					<div style="width:200px;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">{{text}}</div>
+					<div style="width:200px;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">{{text}}
+					</div>
 				</a-tooltip>
-<!--				<a slot="action">删除</a>-->
+				<span slot="action" slot-scope="text,record">
+					<a @click="onUpdateAccess(record)" style="margin-right:10px;">编辑</a>
+					<a-popconfirm
+							title="是否删除?"
+							ok-text="是"
+							cancel-text="否"
+							@confirm="onDeleteOpenId(record)"
+					>
+						<a style="color:red;">删除</a>
+					</a-popconfirm>
+				</span>
 			</a-table>
+			<!--			</template>-->
 		</a-table>
 		<div>
 			<a-modal v-model="visible" title="bucket详情" @ok="handleOk">
@@ -58,6 +76,17 @@
 						:model="form">
 					<a-form-model-item label="bucketName" prop="bucketName">
 						<a-input v-model="form.bucketName"/>
+					</a-form-model-item>
+				</a-form-model>
+			</a-modal>
+			<a-modal v-model="accessVisible" title="秘钥详情" @ok="accessHandleOk">
+				<a-form-model
+						ref="accessForm"
+						:label-col="{span:6}"
+						:wrapper-col="{span:12}"
+						:model="accessForm">
+					<a-form-model-item label="用途" prop="useInfo">
+						<a-input v-model="accessForm.useInfo"/>
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
@@ -83,26 +112,34 @@
             scopedSlots: {customRender: 'action'},
         },
     ];
-    const innerColumns = [{
-        title: 'openId',
-        dataIndex: 'openId'
-    }, {
-        title: '公钥',
-        dataIndex: 'publicKey',
-        scopedSlots: {customRender: 'publicKey'},
-        ellipsis: true
-    }, {
-        title: '私钥',
-        dataIndex: 'privateKey',
-        scopedSlots: {customRender: 'privateKey'},
-        ellipsis: true
-    }, {
-        title: '创建时间',
-        dataIndex: 'createdDate',
-    }, {
-        title: '修改时间',
-        dataIndex: 'updatedDate',
-    }];
+    const innerColumns = [
+        {
+            title: 'openId',
+            dataIndex: 'openId'
+        }, {
+            title: '用途',
+            dataIndex: 'useInfo'
+        }, {
+            title: '公钥',
+            dataIndex: 'publicKey',
+            scopedSlots: {customRender: 'publicKey'},
+            ellipsis: true
+        }, {
+            title: '私钥',
+            dataIndex: 'privateKey',
+            scopedSlots: {customRender: 'privateKey'},
+            ellipsis: true
+        }, {
+            title: '创建时间',
+            dataIndex: 'createdDate',
+        }, {
+            title: '修改时间',
+            dataIndex: 'updatedDate',
+        }, {
+            title: '操作',
+            scopedSlots: {customRender: 'action'},
+        }
+    ];
     export default {
         data() {
             return {
@@ -110,11 +147,22 @@
                 columns,
                 innerColumns,
                 innerData: [],
+                innerDatas: [],
+                expandedRowKeys: [],
+                expandedRow: {},
                 pagination: false,
                 visible: false,
+                accessVisible: false,
                 form: {
                     id: null,
                     bucketName: ''
+                },
+                accessForm: {
+                    openId: null,
+                    bucketName: null,
+                    publicKey: null,
+                    privateKey: null,
+                    useInfo: '',
                 },
                 rules: {
                     bucketName: [
@@ -128,13 +176,49 @@
         },
         methods: {
             onGenerate(record) {
-                this.$http.post("/member/access/" + record.id).then(value => {
-                    this.$message.success("更新秘钥成功");
-                    this.fetch();
-                });
+                this.accessForm = {
+                    openId: null,
+                    bucketName: record.bucketName,
+                    publicKey: null,
+                    privateKey: null,
+                    useInfo: '',
+				}
+                this.accessVisible = true;
+            },
+			onUpdateAccess(access){
+                this.accessForm = {...access};
+                this.accessVisible = true;
+			},
+            accessHandleOk() {
+                let accessForm = this.accessForm;
+                if (accessForm.openId) {
+                    //修改
+                    this.$http.put("/member/access/" + accessForm.bucketName+'/'+accessForm.openId, accessForm).then(value => {
+                        this.fetchExpandedRow();
+                        this.accessVisible = false;
+                        this.$message.success("修改成功");
+                    });
+                } else {
+                    //新增
+                    this.$http.post("/member/access/" + accessForm.bucketName, accessForm).then(value => {
+                        this.fetchExpandedRow();
+                        this.accessVisible = false;
+                        this.$message.success("新增成功");
+                    });
+                }
             },
             expand(expanded, record) {
-                this.$http.get("/member/access/" + record.id).then(value => {
+                if (expanded) {
+                    this.expandedRowKeys = [record.id];
+                    this.expandedRow = record;
+                    this.innerData = [];
+                    this.fetchExpandedRow();
+                } else {
+                    this.expandedRowKeys = [];
+                }
+            },
+            fetchExpandedRow() {
+                this.$http.get("/member/access/" + this.expandedRow.bucketName).then(value => {
                     this.innerData = value.data.result;
                 });
             },
@@ -149,6 +233,12 @@
             onDelete(id) {
                 this.$http.delete('/member/bucket?id=' + id).then(response => {
                     this.fetch();
+                    this.$message.success("删除成功");
+                });
+            },
+            onDeleteOpenId(access) {
+                this.$http.delete(`/member/access/${access.bucketName}/${access.openId}`).then(response => {
+                    this.fetchExpandedRow();
                     this.$message.success("删除成功");
                 });
             },

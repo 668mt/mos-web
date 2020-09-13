@@ -1,55 +1,61 @@
 <template>
 	<a-card>
 		<a-row style="margin-bottom:10px;">
-			<a-button type="primary" @click="onAdd">上传</a-button>
-			<a-select v-model="currentBucket" style="width:150px;float: right;">
-				<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
-					{{bucket.bucketName}}
-				</a-select-option>
-			</a-select>
+			<div class="tool-btns">
+				<a-button type="primary" @click="onAdd">上传</a-button>
+				<a-button type="primary" @click="onBatchDelete" :disabled="this.selectedRowKeys.length === 0">批量删除
+				</a-button>
+				<a-input-search placeholder="输入搜索内容" style="margin-left:15px;width: 200px" v-model="keyWord"
+								@search="fetch()"/>
+				<a-select v-model="currentBucket" style="width:150px;float: right;">
+					<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
+						{{bucket.bucketName}}
+					</a-select-option>
+				</a-select>
+			</div>
 		</a-row>
+		<div style="margin:10px;">
+			<a class="dir-nav" @click="changeCurrentPath(lastDir? lastDir.path : '/')" :disabled="!lastDir">
+				<a-icon type="rollback"/>
+			</a>
+			<span v-if="parentDirs.length > 0">
+				<a style="margin-left:10px;" class="dir-nav" v-for="dir in parentDirs" :key="dir.path"
+				   @click="changeCurrentPath(dir.path)">{{dir.path}}</a>
+			</span>
+			<span class="current" style="margin-left:10px;">
+				{{currentPath}}
+			</span>
+		</div>
 		<a-table :columns="columns" :data-source="data" :pagination="pagination"
-				 :rowKey="(row,index) => {return index}"
-				 @expand="expand"
+				 :row-selection="rowSelection"
+				 :rowKey="(row) => {return row.id}"
 				 @change="handleTableChange">
-			<span slot="name" slot-scope="text,record,index">
-				<span v-if="index === 0">
-					<a class="dir-nav" @click="changeCurrentPath(lastDir? lastDir.path : '/')" :disabled="!lastDir">
-						<a-icon type="rollback"/>
+			<span slot="name" slot-scope="text,record">
+				<span v-if="record.isDir">
+					<icon-font type="icon-weibiaoti-_huabanfuben" style="font-size:18px;"/>
+					<a class="resource-link" @click="changeCurrentPath(record.path)">
+						/{{record.fileName}}
 					</a>
-					<icon-font type="icon-fanhui" style="font-size:24px;"></icon-font>
-					<span class="path" v-if="parentDirs.length > 0">
-						<a class="dir-nav" v-for="dir in parentDirs" :key="dir.path"
-						   @click="changeCurrentPath(dir.path)">{{dir.path}}</a>
-					</span>
-					<span class="path current">
-						{{currentPath}}
-					</span>
 				</span>
 				<span v-else>
-					<span v-if="record.fileName">
-						<a-icon type="file"/>
-						<a class="resource-link" :href="`/mos/${currentBucket}${record.pathname}`" target="_blank">
-							{{record.fileName}}
-						</a>
-					</span>
-					<span v-else>
-						<a-icon type="folder"/>
-						<a class="resource-link" @click="changeCurrentPath(record.path)">
-							{{record.name}}
-						</a>
-					</span>
+					<icon-font v-if="record.icon" :type="record.icon" style="font-size:16px;"/>
+					<icon-font v-else type="icon-wenjian" style="font-size:16px;"/>
+					<a style="margin-left:8px;" class="resource-link" :href="`/mos/${currentBucket}${record.path}`"
+					   target="_blank">
+						{{record.fileName}}
+					</a>
 				</span>
 			</span>
-			<span v-if="index > 0" slot="action" slot-scope="text,record,index">
+			<span slot="action" slot-scope="text,record">
 				<a-popconfirm
 						title="是否删除?"
 						ok-text="是"
 						cancel-text="否"
-						@confirm="onDelete(record,record.fileName ? 'delFile' : 'delDir')"
+						@confirm="onDelete(record,record.isDir ? 'delDir' : 'delFile')"
 				>
 					<a style="color:red;">删除</a>
 				</a-popconfirm>
+				<a style="margin-left:10px;" @click="openGenAddr(record)" v-if="!record.isDir">访问链</a>
 			</span>
 		</a-table>
 		<div>
@@ -57,30 +63,61 @@
 					 okText="上传"
 					 :confirmLoading="uploading"
 			>
-				<a-progress :percent="uploadPercent" v-if="uploadPercent > 0"/>
-				<a-form-model
-						:rules="rules"
-						ref="ruleForm"
-						:label-col="{span:6}"
-						:wrapper-col="{span:12}"
-						:model="form">
-					<a-form-model-item label="bucket" prop="bucketName">
-						<a-select v-model="form.bucketName">
+				<a-form :form="form">
+					<a-progress :percent="uploadPercent" v-if="uploadPercent > 0"/>
+					<a-form-item v-bind="formItemLayout" label="桶">
+						<a-select v-decorator="['bucketName',{rules: [{required: true,message: '请选择桶',}],},]">
 							<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
 								{{bucket.bucketName}}
 							</a-select-option>
 						</a-select>
-					</a-form-model-item>
-					<a-form-model-item label="pathname" prop="pathname">
-						<a-input v-model="form.pathname"/>
-					</a-form-model-item>
-					<a-form-model-item label="文件" prop="file">
-						<a-upload :file-list="fileList" :remove="handleRemove" :before-upload="beforeUpload">
+					</a-form-item>
+					<a-form-item v-bind="formItemLayout" label="文件">
+						<a-upload :file-list="fileList" :multiple="true" :remove="handleRemove"
+								  :before-upload="beforeUpload">
 							<a-button>
 								<a-icon type="upload"/>
 								选择
 							</a-button>
 						</a-upload>
+					</a-form-item>
+					<a-form-item v-bind="formItemLayout" v-for="(file,index) in fileList" :key="index"
+								 :label="`文件${index+1}`"
+								 has-feedback>
+						<a-input
+								v-decorator="['pathnames['+index+']',{rules: [{required: true,message: '文件名必填'},{
+								    validator:checkPathname,
+								    message:'文件已存在'
+								}],},]"
+								type="text"
+						/>
+					</a-form-item>
+				</a-form>
+			</a-modal>
+			<a-modal v-model="addrVisible" title="访问链详情" @ok="addrHandleOk" okText="生成">
+				<a-form-model
+						ref="addrForm"
+						:label-col="{span:6}"
+						:wrapper-col="{span:12}"
+						:model="addrForm">
+					<a-form-model-item label="秘钥">
+						<a-select v-model="addrForm.openId">
+							<a-select-option v-for="row in openIds" :key="row.openId" :value="row.openId">{{row.useInfo
+								? row.useInfo : row.openId}}
+							</a-select-option>
+						</a-select>
+					</a-form-model-item>
+					<a-form-model-item label="桶" prop="bucketName">
+						<a-input v-model="addrForm.bucketName" disabled/>
+					</a-form-model-item>
+					<a-form-model-item label="文件" prop="fileName">
+						<a-input v-model="addrForm.fileName" disabled/>
+					</a-form-model-item>
+					<a-form-model-item label="有效时间" prop="expireSeconds">
+						<a-input-number v-model="addrForm.expireSeconds" style="width: 100%"/>
+					</a-form-model-item>
+					<a-form-model-item label="访问链" prop="signUrl">
+						<a-input v-model="addrForm.signUrl"/>
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
@@ -107,49 +144,53 @@
             scopedSlots: {customRender: 'action'},
         },
     ];
-    // const innerColumns = [{
-    //     title: 'openId',
-    //     dataIndex: 'openId'
-    // }, {
-    //     title: '公钥',
-    //     dataIndex: 'publicKey',
-    //     scopedSlots: {customRender: 'publicKey'},
-    //     ellipsis: true
-    // }, {
-    //     title: '私钥',
-    //     dataIndex: 'privateKey',
-    //     scopedSlots: {customRender: 'privateKey'},
-    //     ellipsis: true
-    // }, {
-    //     title: '创建时间',
-    //     dataIndex: 'createdDate',
-    // }, {
-    //     title: '修改时间',
-    //     dataIndex: 'updatedDate',
-    // }];
     import {Icon} from 'ant-design-vue';
 
     const IconFont = Icon.createFromIconfontCN({
-        scriptUrl: '//at.alicdn.com/t/font_1836787_bnktpqgty9.js',
+        scriptUrl: '//at.alicdn.com/t/font_1836787_2a565rchgum.js',
     });
     export default {
         data() {
             return {
                 uploadPercent: 0,
+                checkPathname: (rule, value, callback) => {
+                    if (value === '') {
+                        callback();
+                    }
+                    let bucketName = this.form.getFieldValue('bucketName');
+                    this.$http.get(`/upload/${bucketName}/isExists`, {
+                        params: {
+                            pathname: value
+                        }
+                    }).then(response => {
+                        let isExists = response.data.result;
+                        if (isExists) {
+                            callback(new Error(rule.message));
+                        } else {
+                            callback();
+                        }
+                    });
+                },
                 lastDir: null,
                 parentDirs: [],
                 currentBucket: null,
                 currentPath: '/',
                 data: [],
                 columns,
-                // innerColumns,
-                innerData: [],
-                pagination: false,
+                pagination: {
+                    pageSizeOptions: ['10', '20', '50', '100'],
+                    pageSize: 10,
+                    showSizeChanger: true,
+                    showTotal(total, range) {
+                        return '数据总数：' + total;
+                    }
+                },
                 visible: false,
                 form: {
                     bucketName: '',
-                    pathname: '',
+                    pathnames: [],
                 },
+                keyWord: '',
                 rules: {
                     bucketName: [
                         {required: true, message: '请选择bucket', trigger: 'blur'},
@@ -157,8 +198,64 @@
                 },
                 buckets: [],
                 fileList: [],
-                uploading: false
+                formItemLayout: {
+                    labelCol: {
+                        xs: {span: 24},
+                        sm: {span: 6},
+                    },
+                    wrapperCol: {
+                        xs: {span: 24},
+                        sm: {span: 18},
+                    },
+                },
+                uploading: false,
+                selectedRowKeys: [],
+                addrVisible: false,
+                addrForm: {
+                    signUrl: '',
+                    openId: null,
+                    resourceId: null,
+                    expireSeconds: 3600,
+                    bucketId: null
+                },
+                openIds: []
             };
+        },
+        computed: {
+            rowSelection() {
+                const {selectedRowKeys} = this;
+                return {
+                    selectedRowKeys,
+                    columnWidth: "10px",
+                    onChange: this.onSelectChange,
+                    hideDefaultSelections: true,
+                    selections: [
+                        {
+                            key: 'dirs',
+                            text: '文件夹',
+                            onSelect: changableRowKeys => {
+                                let newSelectedRowKeys = [];
+                                newSelectedRowKeys = changableRowKeys.filter((key, index) => {
+                                    return this.data[index].isDir;
+                                });
+                                this.selectedRowKeys = newSelectedRowKeys;
+                            },
+                        },
+                        {
+                            key: 'files',
+                            text: '文件',
+                            onSelect: changableRowKeys => {
+                                let newSelectedRowKeys = [];
+                                newSelectedRowKeys = changableRowKeys.filter((key, index) => {
+                                    return !this.data[index].isDir;
+                                });
+                                this.selectedRowKeys = newSelectedRowKeys;
+                            },
+                        },
+                    ],
+                    onSelection: this.onSelection,
+                };
+            },
         },
         mounted() {
             this.fetchBucket();
@@ -169,41 +266,120 @@
             },
             currentPath() {
                 this.fetch();
-            }
+            },
         },
         methods: {
-            expand(expanded, record) {
-                //TODO
+            openGenAddr(record) {
+                this.addrForm = {
+                    signUrl: null,
+                    openId: null,
+                    fileName: record.fileName,
+                    resourceId: record.id,
+                    expireSeconds: 3600,
+                    bucketName: this.currentBucket
+                }
+                this.addrVisible = true;
+                this.$http.get('/member/access/' + this.currentBucket).then(response => {
+                    this.openIds = response.data.result;
+                    this.addrForm.openId = this.openIds[0].openId;
+                });
             },
+            genAddr() {
+                let body = {...this.addrForm};
+                this.$http.post('/member/access/sign', body).then(response => {
+                    this.addrForm.signUrl = response.data.result;
+                    console.log(response.data.result)
+                });
+            },
+            addrHandleOk() {
+                this.genAddr();
+                // this.addrVisible = false;
+            },
+            onSelectChange(selectedRowKeys, selectedRows) {
+                this.selectedRowKeys = selectedRowKeys;
+            },
+            //点击上传按钮
             onAdd() {
                 this.form = {
                     bucketName: this.currentBucket,
                     pathname: this.currentPath
                 };
+                this.$nextTick().then(value => {
+                    this.form.setFieldsValue({
+                        bucketName: this.currentBucket
+                    })
+                })
                 this.uploadPercent = 0;
                 this.visible = true;
+                this.form.pathnames = [];
+                this.fileList = [];
+                this.form = this.$form.createForm(this, {name: 'register'});
             },
             changeCurrentPath(path) {
-                this.fetch(path, () => {
+                this.fetch({path: path}, () => {
                     this.currentPath = path;
                 });
             },
             onDelete(record, type) {
                 let params = {};
                 if (type === 'delFile') {
-                    params = {pathname: record.pathname};
+                    params = {fileIds: record.id};
                 } else {
-                    params = {path: record.path};
+                    params = {dirIds: record.id};
                 }
-                this.$http.delete(`/member/resource/${this.currentBucket}/${type}`, {
+                this.$http.delete(`/member/resource/${this.currentBucket}/del`, {
                     params: params
                 }).then(response => {
                     this.$message.success("删除成功");
                     this.fetch();
                 });
             },
+            onBatchDelete() {
+                let dirIds = [];
+                let fileIds = [];
+                const rows = this.data;
+                const selectedRowKeys = this.selectedRowKeys;
+                const selectedRows = selectedRowKeys.map(id => {
+                    for (let row of rows) {
+                        if (row.id === id) {
+                            return row;
+                        }
+                    }
+                })
+                let dirNames = selectedRows.filter(value => value.isDir).map(value => value.path);
+                let fileNames = selectedRows.filter(value => !value.isDir).map(value => value.path);
+                dirIds = selectedRows.filter(value => value.isDir).map(value => value.id);
+                fileIds = selectedRows.filter(value => !value.isDir).map(value => value.id);
+                dirNames.push(fileNames);
+                const $this = this;
+                this.$confirm({
+                    title: '确定删除这些资源吗?',
+                    content: dirNames.join(","),
+                    okText: '确定',
+                    okType: 'danger',
+                    cancelText: '取消',
+                    onOk() {
+                        const params = {
+                            fileIds: fileIds.join(","),
+                            dirIds: dirIds.join(",")
+                        };
+                        $this.$http.delete(`/member/resource/${$this.currentBucket}/del`, {
+                            params: params
+                        }).then(response => {
+                            $this.$message.success("删除成功");
+                            $this.selectedRowKeys = [];
+                            $this.fetch();
+                        });
+                    },
+                });
+            },
             handleTableChange(pagination, filters, sorter) {
-                this.fetch();
+                this.fetch({
+                    pageNum: pagination.current,
+                    pageSize: pagination.pageSize,
+                    path: this.currentPath,
+                    keyWord: this.keyWord
+                });
             },
             fetchBucket() {
                 this.$http.get("/member/bucket/list").then(response => {
@@ -211,58 +387,101 @@
                     this.currentBucket = this.buckets[0].bucketName;
                 })
             },
-            fetch(path = this.currentPath, callback) {
-                this.$http.get("/member/resource/" + this.currentBucket + path).then(value => {
+            fetch(params = {pageNum: 1, pageSize: 10, path: this.currentPath, keyWord: this.keyWord}, callback) {
+                this.$http.get("/member/resource/" + this.currentBucket + params.path, {
+                    params: params
+                }).then(value => {
                     const result = value.data.result;
                     this.currentPath = !result.currentDir ? '/' : result.currentDir.path;
                     this.parentDirs = result.parentDirs;
                     this.lastDir = result.lastDir;
-                    this.data = [{}, ...result.dirs, ...result.files];
+                    const pagination = {...this.pagination};
+                    if (result.resources) {
+                        this.data = [...result.resources.list];
+                        pagination.total = result.resources.total;
+                        pagination.pageSize = result.resources.pageSize;
+                    } else {
+                        this.data = [];
+                        pagination.total = 0;
+                    }
+                    this.pagination = pagination;
                     if (callback) {
                         callback();
                     }
                 });
             },
             handleOk(e) {
-                this.$refs.ruleForm.validate(valid => {
-                    if (valid) {
-                        const {fileList} = this;
+                this.form.validateFieldsAndScroll((err, values) => {
+                    if (!err) {
+                        const pathnames = values.pathnames;
+                        const bucketName = values.bucketName;
+
+                        // this.uploadings = [];
+                        // for (let i = 0; i < this.fileList.length; i++) {
+                        //     this.uploadings.push(true);
+                        // }
+                        // this.uploading = true;
+                        // let checkUploadThread = setInterval(() => {
+                        //     let done = true;
+                        //     for (let i = 0; i < this.uploadings.length; i++) {
+                        //         if (this.uploadings[i]) {
+                        //             done = false;
+                        //             break;
+                        //         }
+                        //     }
+                        //     if (done) {
+                        //         clearInterval(checkUploadThread);
+                        //         this.uploading = false;
+                        //         this.$message.success("上传成功!");
+                        //         this.visible = false;
+                        //         this.fetch();
+                        //     }
+                        // }, 500);
                         const formData = new FormData();
-                        fileList.forEach(file => {
-                            formData.append('file', file);
+                        this.fileList.forEach(file => {
+                            formData.append('files', file);
                         });
-                        formData.append("pathname", this.form.pathname);
+                        let uploadId = "";
+                        pathnames.forEach(pathname => {
+                            uploadId += pathname;
+                            formData.append("pathnames", pathname);
+                        });
                         const params = {
-                            uploadId: `${this.currentBucket}-${this.form.pathname}`,
-                            bucketName: this.currentBucket,
-                            pathname: this.form.pathname
+                            uploadId: `${bucketName}-${uploadId}`,
+                            bucketName: bucketName,
+                            taskCount: pathnames.length
                         };
                         this.$http.get("/upload/progress/reset", {
-                            params: params
+                            params: params,
                         }).then(value => {
                             let t = setInterval(() => {
                                 this.$http.get("/upload/progress", {
                                     params: params
                                 }).then(res => {
-                                    this.uploadPercent = (res.data.result * 100).toFixed(0);
+                                    this.uploadPercent = parseFloat((res.data.result * 100).toFixed(0));
                                 });
                             }, 500);
+                            console.log("开始上传")
                             this.uploading = true;
-                            this.$http.post("/upload/" + this.form.bucketName, formData, {
+                            this.$http.post("/upload/" + bucketName, formData, {
                                 params: {
                                     uploadId: params.uploadId
                                 }
                             }).then(value => {
+                                console.log("上传成功");
                                 this.uploading = false;
                                 clearInterval(t);
                                 this.$message.success("上传成功!");
                                 this.visible = false;
                                 this.fetch();
                             }, reason => {
+                                console.log("上传失败");
+                                this.$message.success("上传失败!");
                                 this.uploading = false;
                                 clearInterval(t);
                             });
                         });
+
                     }
                 });
             },
@@ -272,18 +491,36 @@
                 newFileList.splice(index, 1);
                 this.fileList = newFileList;
             },
-            beforeUpload(file) {
+            getUploadPathname(name) {
+                let pathname;
                 if (this.currentPath === '/') {
-                    this.form.pathname = this.currentPath + file.name;
+                    pathname = this.currentPath + name;
                 } else {
-                    this.form.pathname = this.currentPath + '/' + file.name;
+                    pathname = this.currentPath + '/' + name;
                 }
-                this.fileList = [file];
+                return pathname;
+            },
+            beforeUpload(file) {
+                for (let f of this.fileList) {
+                    if (f.name === file.name) {
+                        return false;
+                    }
+                }
+                this.fileList.push(file);
+                for (let i = 0; i < this.fileList.length; i++) {
+                    const pathname = this.getUploadPathname(this.fileList[i].name);
+                    let obj = {};
+                    let key = `pathnames[${i}]`;
+                    obj[key] = pathname;
+                    this.$nextTick().then(value => {
+                        this.form.setFieldsValue(obj);
+                        this.form.validateFields([key]);
+                    })
+                }
                 return false;
             },
         },
         components: {
-            // BucketDrawer
             IconFont
         }
     };
@@ -306,5 +543,9 @@
 	
 	.path.current {
 		color: gray;
+	}
+	
+	.tool-btns button {
+		margin-left: 15px;
 	}
 </style>

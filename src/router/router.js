@@ -28,7 +28,7 @@ export default new Router({
             redirect: '/signin',
             children: [{
                 path: '/content',
-                name: 'mos',
+                name: 'MOS',
                 icon: 'inbox',
                 component: PageView,
                 children: [{
