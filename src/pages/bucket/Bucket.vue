@@ -8,19 +8,21 @@
 				 :expandedRowKeys="expandedRowKeys"
 				 @expand="expand"
 				 @change="handleTableChange">
+			<span slot="owner" slot-scope="text,record">
+				<a-tag v-if="record.isOwn" color="#108ee9">{{text}}</a-tag>
+				<a-tag v-else color="#87d068">{{text}}</a-tag>
+			</span>
 			<span slot="action" slot-scope="text,record">
 				<a @click="onEdit(record)">编辑</a>
+				<span v-if="record.isOwn">
 				<a-divider type="vertical"/>
-				<!--				<a-popconfirm-->
-				<!--						title="是否新增秘钥?"-->
-				<!--						ok-text="是"-->
-				<!--						cancel-text="否"-->
-				<!--						@confirm="onGenerate(record)"-->
-				<!--				>-->
+				<a @click="onGrant(record)">授权</a>
+				</span>
+				<a-divider type="vertical"/>
 					<a style="color:red" @click="onGenerate(record)">新增秘钥</a>
-				<!--				</a-popconfirm>-->
 				<a-divider type="vertical"/>
 				<a-popconfirm
+						v-if="record.isOwn"
 						title="是否删除?"
 						ok-text="是"
 						cancel-text="否"
@@ -29,9 +31,6 @@
 					<a style="color:red;">删除</a>
 				</a-popconfirm>
 			</span>
-			<!--			<template slot="expandedRowRender"-->
-			<!--					  slot-scope="record,index">-->
-			<!--				{{index}}{{record}}-->
 			<a-table
 					slot="expandedRowRender"
 					:rowKey="(row,index) => {return row.openId}"
@@ -90,11 +89,32 @@
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
+			<a-modal v-model="grantVisible" title="授权" @ok="grantOk" width="700px">
+				<a-transfer
+						:data-source="userData"
+						show-search
+						@change="handleGrantChange"
+						:list-style="{width: '250px',height: '300px',}"
+						:operations="['添加授权', '删除授权']"
+						:target-keys="grantUserKeys"
+						:render="item => `${item.username}`"
+				>
+					<span slot="notFoundContent">
+					  没数据
+					</span>
+				</a-transfer>
+			</a-modal>
 		</div>
 	</a-card>
+	
 </template>
 <script>
     const columns = [
+        {
+            title: '所有者',
+            dataIndex: 'owner',
+            scopedSlots: {customRender: 'owner'},
+        },
         {
             title: '名称',
             dataIndex: 'bucketName',
@@ -168,7 +188,12 @@
                     bucketName: [
                         {required: true, message: '请输入bucketName', trigger: 'blur'},
                     ],
-                }
+                },
+                grantVisible:false,
+                userData:[],
+                grantUserKeys:[],
+                targetKeys:[],
+                currentGrantBucketId:null,
             };
         },
         mounted() {
@@ -279,6 +304,30 @@
                     }
                 });
             },
+			onGrant(record){
+                this.grantVisible = true;
+                this.$http.get('/member/bucket/grant/list',{
+                    params:{
+                        bucketId:record.id
+					}
+				}).then(response => {
+                    this.userData = response.data.result.allUsers;
+                    this.grantUserKeys = response.data.result.userKeys;
+				});
+                this.currentGrantBucketId = record.id;
+			},
+            handleGrantChange(targetKeys, direction, moveKeys) {
+                this.grantUserKeys = targetKeys;
+            },
+            grantOk(){
+                this.$http.post('/member/bucket/grant',{
+                    bucketId:this.currentGrantBucketId,
+					userIds:this.grantUserKeys.map(value => parseFloat(value))
+				}).then(response => {
+				   this.$message.success("授权成功");
+				   this.grantVisible = false;
+				});
+			}
         },
         components: {
             // BucketDrawer

@@ -36,7 +36,7 @@ export default new Router({
                     name: '用户管理',
                     component: User,
                     icon: 'none',
-                    invisible:user.isAdmin === false
+                    invisible:!user.isAdmin
                 }, {
                     path: '/bucket',
                     name: 'bucket管理',
