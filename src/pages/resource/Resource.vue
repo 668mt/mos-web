@@ -55,7 +55,12 @@
 				>
 					<a style="color:red;">删除</a>
 				</a-popconfirm>
-				<a style="margin-left:10px;" @click="openGenAddr(record)" v-if="!record.isDir">访问链</a>
+				<span v-if="!record.isDir">
+					<a-divider type="vertical"/>
+					<a @click="onEditResource(record)">编辑</a>
+					<a-divider type="vertical"/>
+					<a @click="openGenAddr(record)">访问链</a>
+				</span>
 			</span>
 		</a-table>
 		<div>
@@ -118,6 +123,30 @@
 					</a-form-model-item>
 					<a-form-model-item label="访问链" prop="signUrl">
 						<a-input v-model="addrForm.signUrl"/>
+					</a-form-model-item>
+				</a-form-model>
+			</a-modal>
+			<a-modal v-model="editVisible" title="资源详情" @ok="editHandleOk" okText="保存">
+				<a-form-model
+						ref="editForm"
+						:label-col="{span:6}"
+						:wrapper-col="{span:12}"
+						:model="editForm">
+					<a-form-model-item label="资源名" prop="fileName">
+						<a-input v-model="editForm.fileName" disabled/>
+					</a-form-model-item>
+					<a-form-model-item label="是否公开" prop="isPublic">
+						<a-radio-group v-model="editForm.isPublic">
+							<a-radio :value="true">公开</a-radio>
+							<a-radio :value="false">私有</a-radio>
+						</a-radio-group>
+					</a-form-model-item>
+					<a-form-model-item label="响应头" prop="contentType">
+						<a-auto-complete
+								v-model="editForm.contentType"
+								:data-source="contentTypeDataSource"
+								@search="onContentTypeSearch"
+						/>
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
@@ -218,7 +247,15 @@
                     expireSeconds: 3600,
                     bucketId: null
                 },
-                openIds: []
+                openIds: [],
+                editVisible: false,
+                editForm: {
+                    fileName: null,
+                    isPublic: false,
+                    contentType: null
+                },
+                contentTypeDataSource:[],
+				
             };
         },
         computed: {
@@ -519,6 +556,26 @@
                 }
                 return false;
             },
+            onEditResource(record) {
+                this.editForm = {...record}
+                this.editVisible = true;
+            },
+            //编辑资源
+            editHandleOk() {
+                this.$http.put(`/member/resource/${this.currentBucket}/${this.editForm.id}`, this.editForm).then(response => {
+                    this.$message.success("更新成功");
+                    this.fetch();
+                    this.editVisible = false;
+                });
+            },
+            onContentTypeSearch(searchText){
+                this.contentTypeDataSource = [
+                    'text/html;charset=UTF-8','text/xml','text/plain;charset=UTF-8','application/json;charset=UTF-8','application/octet-stream',
+					'application/pdf','text/markdown','text/event-stream',
+					'image/png','image/jpeg','image/gif','application/xml','application/xhtml+xml','application/stream+json',
+					'application/rss+xml','application/problem+xml','application/problem+json;charset=UTF-8','application/problem+json'
+				].filter(value => value.indexOf(searchText) !== -1);
+			}
         },
         components: {
             IconFont
