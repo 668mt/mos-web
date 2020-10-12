@@ -38,6 +38,9 @@
 					<a-form-model-item label="用户名" prop="username">
 						<a-input v-model="form.username"/>
 					</a-form-model-item>
+					<a-form-model-item label="姓名" prop="name">
+						<a-input v-model="form.name"/>
+					</a-form-model-item>
 					<a-form-model-item label="密码" prop="password">
 						<a-input type="password" v-model="form.password" placeholder="不填写表示不修改"/>
 					</a-form-model-item>
@@ -62,6 +65,10 @@
         {
             title: '用户名',
             dataIndex: 'username',
+        },
+        {
+            title: '姓名',
+            dataIndex: 'name',
         },
         {
             title: '是否启用',
@@ -91,7 +98,7 @@
         data() {
             return {
                 fieldsEquals: (rule, value, callback) => {
-                    if (value === '') {
+                    if (!value || value.trim() === '') {
                         callback();
                     }
                     if (this.form[rule.equalTo] !== value) {
@@ -115,6 +122,7 @@
                 form: {
                     id: null,
                     username: '',
+					name:'',
                     password: '',
                     confirm_password: '',
                     isEnable: true,
@@ -145,6 +153,7 @@
                 };
                 this.rules = {
                     username: [{required: true, message: '请输入用户名', trigger: 'blur'},],
+                    name: [{required: true, message: '请输入姓名', trigger: 'blur'},],
                     password: [{required: true, message: '请输入密码', trigger: 'blur'}, {
                         validator: this.fieldsEquals,
                         equalTo: 'confirm_password',
@@ -164,6 +173,8 @@
                 this.form = this.$mt.deepCopy(record);
                 this.form.password = null;
                 this.rules = {
+                    username: [{required: true, message: '请输入用户名', trigger: 'blur'},],
+                    name: [{required: true, message: '请输入姓名', trigger: 'blur'},],
                     password: [{
                         validator: this.fieldsEquals,
                         equalTo: 'confirm_password',

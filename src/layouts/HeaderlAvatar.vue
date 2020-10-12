@@ -3,7 +3,7 @@
     <span style="cursor: pointer">
 <!--      <a-avatar class="avatar" size="small" shape="circle" :src="currUser.avatar"/>-->
 		<a-avatar size="large" style="color: #f56a00; backgroundColor: #fde3cf">
-      {{currUser.username}}
+      {{currentName}}
     </a-avatar>
     </span>
 		<a-menu style="width: 150px" slot="overlay">
@@ -32,7 +32,15 @@
         computed: {
             currUser() {
                 return JSON.parse(window.localStorage.getItem("currentUser"));
-            }
+            },
+			currentName(){
+                let currUser = JSON.parse(window.localStorage.getItem("currentUser"));
+                if(currUser.name){
+                    return currUser.name.substring(currUser.name.length - 1);
+				}else{
+                	return currUser.username;
+                }
+			}
         }
     }
 </script>

@@ -6,7 +6,7 @@
 				<a-button type="primary" @click="onBatchDelete" :disabled="this.selectedRowKeys.length === 0">批量删除
 				</a-button>
 				<a-input-search placeholder="输入搜索内容" style="margin-left:15px;width: 200px" v-model="keyWord"
-								@search="fetch()"/>
+								@search="onSearch()"/>
 				<a-select v-model="currentBucket" style="width:150px;float: right;">
 					<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
 						{{bucket.bucketName}}
@@ -44,6 +44,12 @@
 					   target="_blank">
 						{{record.fileName}}
 					</a>
+				</span>
+			</span>
+			<span slot="isPublic" slot-scope="text,record">
+				<span v-if="!record.isDir">
+					<a-tag v-if="text" color="#f50">公开</a-tag>
+					<a-tag v-else color="#87d068">私有</a-tag>
 				</span>
 			</span>
 			<span slot="action" slot-scope="text,record">
@@ -165,6 +171,11 @@
             dataIndex: 'readableSize',
         },
         {
+            title: '访问控制',
+            dataIndex: 'isPublic',
+			scopedSlots: {customRender: 'isPublic'}
+        },
+        {
             title: '创建时间',
             dataIndex: 'createdDate',
         },
@@ -254,6 +265,12 @@
                     isPublic: false,
                     contentType: null
                 },
+				allContentTypes:[
+                    'text/html;charset=UTF-8','text/xml;charset=UTF-8','text/plain;charset=UTF-8','application/json;charset=UTF-8','application/octet-stream',
+                    'application/pdf','text/markdown;charset=UTF-8','text/event-stream;charset=UTF-8',
+                    'image/png','image/jpeg','image/gif','application/xml','application/xhtml+xml','application/stream+json',
+                    'application/rss+xml','application/problem+xml','application/problem+json;charset=UTF-8','application/problem+json'
+                ],
                 contentTypeDataSource:[],
 				
             };
@@ -296,16 +313,28 @@
         },
         mounted() {
             this.fetchBucket();
+            this.contentTypeDataSource = [...this.allContentTypes];
         },
         watch: {
             currentBucket() {
-                this.fetch();
-            },
-            currentPath() {
-                this.fetch();
+                let pagination = this.pagination;
+                this.fetch({
+                    pageNum: 1,
+                    pageSize: pagination.pageSize,
+                    path: this.currentPath,
+                    keyWord: this.keyWord
+                });
             },
         },
         methods: {
+            onSearch(){
+                this.fetch({
+                    pageNum: 1,
+                    pageSize: this.pagination.pageSize,
+                    path: this.currentPath,
+                    keyWord: this.keyWord
+                });
+			},
             openGenAddr(record) {
                 this.addrForm = {
                     signUrl: null,
@@ -353,7 +382,12 @@
                 this.form = this.$form.createForm(this, {name: 'register'});
             },
             changeCurrentPath(path) {
-                this.fetch({path: path}, () => {
+                this.fetch({
+                    pageNum: 1,
+                    pageSize: this.pagination.pageSize,
+					path: path,
+                    keyWord: this.keyWord
+				}, () => {
                     this.currentPath = path;
                 });
             },
@@ -368,7 +402,7 @@
                     params: params
                 }).then(response => {
                     this.$message.success("删除成功");
-                    this.fetch();
+                    this.reload();
                 });
             },
             onBatchDelete() {
@@ -405,18 +439,17 @@
                         }).then(response => {
                             $this.$message.success("删除成功");
                             $this.selectedRowKeys = [];
-                            $this.fetch();
+                            $this.reload();
                         });
                     },
                 });
             },
             handleTableChange(pagination, filters, sorter) {
-                this.fetch({
-                    pageNum: pagination.current,
-                    pageSize: pagination.pageSize,
-                    path: this.currentPath,
-                    keyWord: this.keyWord
-                });
+                const pager = { ...this.pagination };
+                pager.current = pagination.current;
+                pager.pageSize = pagination.pageSize;
+                this.pagination = pager;
+                this.reload();
             },
             fetchBucket() {
                 this.$http.get("/member/bucket/list").then(response => {
@@ -424,6 +457,15 @@
                     this.currentBucket = this.buckets[0].bucketName;
                 })
             },
+			reload(){
+                let pagination = this.pagination;
+                this.fetch({
+                    pageNum: pagination.current,
+                    pageSize: pagination.pageSize,
+                    path: this.currentPath,
+                    keyWord: this.keyWord
+                });
+			},
             fetch(params = {pageNum: 1, pageSize: 10, path: this.currentPath, keyWord: this.keyWord}, callback) {
                 this.$http.get("/member/resource/" + this.currentBucket + params.path, {
                     params: params
@@ -434,6 +476,7 @@
                     this.lastDir = result.lastDir;
                     const pagination = {...this.pagination};
                     if (result.resources) {
+                    	pagination.current = result.resources.pageNum;
                         this.data = [...result.resources.list];
                         pagination.total = result.resources.total;
                         pagination.pageSize = result.resources.pageSize;
@@ -510,7 +553,7 @@
                                 clearInterval(t);
                                 this.$message.success("上传成功!");
                                 this.visible = false;
-                                this.fetch();
+                                this.reload();
                             }, reason => {
                                 console.log("上传失败");
                                 this.$message.success("上传失败!");
@@ -564,17 +607,12 @@
             editHandleOk() {
                 this.$http.put(`/member/resource/${this.currentBucket}/${this.editForm.id}`, this.editForm).then(response => {
                     this.$message.success("更新成功");
-                    this.fetch();
+                    this.reload();
                     this.editVisible = false;
                 });
             },
             onContentTypeSearch(searchText){
-                this.contentTypeDataSource = [
-                    'text/html;charset=UTF-8','text/xml','text/plain;charset=UTF-8','application/json;charset=UTF-8','application/octet-stream',
-					'application/pdf','text/markdown','text/event-stream',
-					'image/png','image/jpeg','image/gif','application/xml','application/xhtml+xml','application/stream+json',
-					'application/rss+xml','application/problem+xml','application/problem+json;charset=UTF-8','application/problem+json'
-				].filter(value => value.indexOf(searchText) !== -1);
+                this.contentTypeDataSource = this.allContentTypes.filter(value => value.indexOf(searchText) !== -1);
 			}
         },
         components: {
