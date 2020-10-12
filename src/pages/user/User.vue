@@ -227,19 +227,14 @@
                 const data = this.$mt.deepClone(this.form);
                 this.$refs.ruleForm.validate(valid => {
                     if (valid) {
-                        console.log(data.id)
                         if (!data.id) {
-                            this.$http.post('/admin/user', data, {
-                                transformRequest: this.$mt.transformFormData
-                            }).then(response => {
+                            this.$http.post('/admin/user', data).then(response => {
                                 this.$message.success('新增成功！');
                                 this.visible = false;
                                 this.fetch();
                             });
                         } else {
-                            this.$http.put('/admin/user', data, {
-                                transformRequest: this.$mt.transformFormData
-                            }).then(response => {
+                            this.$http.put('/admin/user', data).then(response => {
                                 this.$message.success('更新成功！');
                                 this.visible = false;
                                 this.fetch();
