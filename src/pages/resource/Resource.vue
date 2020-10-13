@@ -141,7 +141,7 @@
 					<a-form-model-item label="资源名" prop="fileName">
 						<a-input v-model="editForm.fileName" disabled/>
 					</a-form-model-item>
-					<a-form-model-item label="是否公开" prop="isPublic">
+					<a-form-model-item label="权限" prop="isPublic">
 						<a-radio-group v-model="editForm.isPublic">
 							<a-radio :value="true">公开</a-radio>
 							<a-radio :value="false">私有</a-radio>
@@ -171,9 +171,9 @@
             dataIndex: 'readableSize',
         },
         {
-            title: '访问控制',
+            title: '权限',
             dataIndex: 'isPublic',
-			scopedSlots: {customRender: 'isPublic'}
+            scopedSlots: {customRender: 'isPublic'}
         },
         {
             title: '创建时间',
@@ -265,14 +265,14 @@
                     isPublic: false,
                     contentType: null
                 },
-				allContentTypes:[
-                    'text/html;charset=UTF-8','text/xml;charset=UTF-8','text/plain;charset=UTF-8','application/json;charset=UTF-8','application/octet-stream',
-                    'application/pdf','text/markdown;charset=UTF-8','text/event-stream;charset=UTF-8',
-                    'image/png','image/jpeg','image/gif','application/xml','application/xhtml+xml','application/stream+json',
-                    'application/rss+xml','application/problem+xml','application/problem+json;charset=UTF-8','application/problem+json'
+                allContentTypes: [
+                    'text/html;charset=UTF-8', 'text/xml;charset=UTF-8', 'text/plain;charset=UTF-8', 'application/json;charset=UTF-8', 'application/octet-stream',
+                    'application/pdf', 'text/markdown;charset=UTF-8', 'text/event-stream;charset=UTF-8',
+                    'image/png', 'image/jpeg', 'image/gif', 'application/xml', 'application/xhtml+xml', 'application/stream+json',
+                    'application/rss+xml', 'application/problem+xml', 'application/problem+json;charset=UTF-8', 'application/problem+json'
                 ],
-                contentTypeDataSource:[],
-				
+                contentTypeDataSource: [],
+
             };
         },
         computed: {
@@ -327,14 +327,14 @@
             },
         },
         methods: {
-            onSearch(){
+            onSearch() {
                 this.fetch({
                     pageNum: 1,
                     pageSize: this.pagination.pageSize,
                     path: this.currentPath,
                     keyWord: this.keyWord
                 });
-			},
+            },
             openGenAddr(record) {
                 this.addrForm = {
                     signUrl: null,
@@ -385,9 +385,9 @@
                 this.fetch({
                     pageNum: 1,
                     pageSize: this.pagination.pageSize,
-					path: path,
+                    path: path,
                     keyWord: this.keyWord
-				}, () => {
+                }, () => {
                     this.currentPath = path;
                 });
             },
@@ -445,7 +445,7 @@
                 });
             },
             handleTableChange(pagination, filters, sorter) {
-                const pager = { ...this.pagination };
+                const pager = {...this.pagination};
                 pager.current = pagination.current;
                 pager.pageSize = pagination.pageSize;
                 this.pagination = pager;
@@ -457,7 +457,7 @@
                     this.currentBucket = this.buckets[0].bucketName;
                 })
             },
-			reload(){
+            reload() {
                 let pagination = this.pagination;
                 this.fetch({
                     pageNum: pagination.current,
@@ -465,7 +465,7 @@
                     path: this.currentPath,
                     keyWord: this.keyWord
                 });
-			},
+            },
             fetch(params = {pageNum: 1, pageSize: 10, path: this.currentPath, keyWord: this.keyWord}, callback) {
                 this.$http.get("/member/resource/" + this.currentBucket + params.path, {
                     params: params
@@ -476,7 +476,7 @@
                     this.lastDir = result.lastDir;
                     const pagination = {...this.pagination};
                     if (result.resources) {
-                    	pagination.current = result.resources.pageNum;
+                        pagination.current = result.resources.pageNum;
                         this.data = [...result.resources.list];
                         pagination.total = result.resources.total;
                         pagination.pageSize = result.resources.pageSize;
@@ -611,9 +611,9 @@
                     this.editVisible = false;
                 });
             },
-            onContentTypeSearch(searchText){
+            onContentTypeSearch(searchText) {
                 this.contentTypeDataSource = this.allContentTypes.filter(value => value.indexOf(searchText) !== -1);
-			}
+            }
         },
         components: {
             IconFont

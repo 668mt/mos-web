@@ -12,6 +12,10 @@
 				<a-tag v-if="record.isOwn" color="#108ee9">{{text}}</a-tag>
 				<a-tag v-else color="#87d068">{{text}}</a-tag>
 			</span>
+			<span slot="defaultIsPublic" slot-scope="text">
+				<a-tag v-if="text" color="#f50">公开</a-tag>
+				<a-tag v-else color="#87d068">私有</a-tag>
+			</span>
 			<span slot="action" slot-scope="text,record">
 				<a @click="onEdit(record)">编辑</a>
 				<span v-if="record.isOwn">
@@ -73,8 +77,14 @@
 						:label-col="{span:6}"
 						:wrapper-col="{span:12}"
 						:model="form">
-					<a-form-model-item label="bucketName" prop="bucketName">
+					<a-form-model-item label="桶名称" prop="bucketName">
 						<a-input v-model="form.bucketName"/>
+					</a-form-model-item>
+					<a-form-model-item label="默认权限" prop="defaultIsPublic">
+						<a-radio-group v-model="form.defaultIsPublic">
+							<a-radio :value="true">公开</a-radio>
+							<a-radio :value="false">私有</a-radio>
+						</a-radio-group>
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
@@ -106,7 +116,7 @@
 			</a-modal>
 		</div>
 	</a-card>
-	
+
 </template>
 <script>
     const columns = [
@@ -118,6 +128,11 @@
         {
             title: '名称',
             dataIndex: 'bucketName',
+        },
+        {
+            title: '默认权限',
+            dataIndex: 'defaultIsPublic',
+            scopedSlots: {customRender: 'defaultIsPublic'},
         },
         {
             title: '创建时间',
@@ -175,7 +190,8 @@
                 accessVisible: false,
                 form: {
                     id: null,
-                    bucketName: ''
+                    bucketName: '',
+                    defaultIsPublic: false
                 },
                 accessForm: {
                     openId: null,
@@ -189,11 +205,11 @@
                         {required: true, message: '请输入bucketName', trigger: 'blur'},
                     ],
                 },
-                grantVisible:false,
-                userData:[],
-                grantUserKeys:[],
-                targetKeys:[],
-                currentGrantBucketId:null,
+                grantVisible: false,
+                userData: [],
+                grantUserKeys: [],
+                targetKeys: [],
+                currentGrantBucketId: null,
             };
         },
         mounted() {
@@ -207,18 +223,18 @@
                     publicKey: null,
                     privateKey: null,
                     useInfo: '',
-				}
+                }
                 this.accessVisible = true;
             },
-			onUpdateAccess(access){
+            onUpdateAccess(access) {
                 this.accessForm = {...access};
                 this.accessVisible = true;
-			},
+            },
             accessHandleOk() {
                 let accessForm = this.accessForm;
                 if (accessForm.openId) {
                     //修改
-                    this.$http.put("/member/access/" + accessForm.bucketName+'/'+accessForm.openId, accessForm).then(value => {
+                    this.$http.put("/member/access/" + accessForm.bucketName + '/' + accessForm.openId, accessForm).then(value => {
                         this.fetchExpandedRow();
                         this.accessVisible = false;
                         this.$message.success("修改成功");
@@ -248,7 +264,11 @@
                 });
             },
             onAdd() {
-                this.form = {};
+                this.form = {
+                    id: null,
+                    bucketName: '',
+                    defaultIsPublic: false
+                };
                 this.showModal();
             },
             onEdit(record) {
@@ -283,17 +303,13 @@
                 this.$refs.ruleForm.validate(valid => {
                     if (valid) {
                         if (!data.id) {
-                            this.$http.post('/member/bucket', data, {
-                                transformRequest: this.$mt.transformFormData
-                            }).then(response => {
+                            this.$http.post('/member/bucket', data).then(response => {
                                 this.$message.success('新增成功！');
                                 this.visible = false;
                                 this.fetch();
                             });
                         } else {
-                            this.$http.put('/member/bucket', data, {
-                                transformRequest: this.$mt.transformFormData
-                            }).then(response => {
+                            this.$http.put('/member/bucket', data).then(response => {
                                 this.$message.success('更新成功！');
                                 this.visible = false;
                                 this.fetch();
@@ -304,30 +320,30 @@
                     }
                 });
             },
-			onGrant(record){
+            onGrant(record) {
                 this.grantVisible = true;
-                this.$http.get('/member/bucket/grant/list',{
-                    params:{
-                        bucketId:record.id
-					}
-				}).then(response => {
+                this.$http.get('/member/bucket/grant/list', {
+                    params: {
+                        bucketId: record.id
+                    }
+                }).then(response => {
                     this.userData = response.data.result.allUsers;
                     this.grantUserKeys = response.data.result.userKeys;
-				});
+                });
                 this.currentGrantBucketId = record.id;
-			},
+            },
             handleGrantChange(targetKeys, direction, moveKeys) {
                 this.grantUserKeys = targetKeys;
             },
-            grantOk(){
-                this.$http.post('/member/bucket/grant',{
-                    bucketId:this.currentGrantBucketId,
-					userIds:this.grantUserKeys.map(value => parseFloat(value))
-				}).then(response => {
-				   this.$message.success("授权成功");
-				   this.grantVisible = false;
-				});
-			}
+            grantOk() {
+                this.$http.post('/member/bucket/grant', {
+                    bucketId: this.currentGrantBucketId,
+                    userIds: this.grantUserKeys.map(value => parseFloat(value))
+                }).then(response => {
+                    this.$message.success("授权成功");
+                    this.grantVisible = false;
+                });
+            }
         },
         components: {
             // BucketDrawer
