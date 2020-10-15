@@ -12,7 +12,6 @@ Vue.prototype.$http = axios;
 Vue.prototype.$mt = mt;
 Vue.config.productionTip = false;
 Vue.use(Antd);
-// axios.defaults.baseURL = "http://localhost:9700";
 axios.defaults.withCredentials = true;
 axios.interceptors.response.use(response => {
     if (response.data.status !== 'ok') {
@@ -23,11 +22,18 @@ axios.interceptors.response.use(response => {
 }, error => {
     if (error.request.responseURL.endsWith("/signin")) {
         Vue.prototype.$message.error("登录已过期");
-        router.replace({
-            name: '登录'
-        });
+        setTimeout(function () {
+            router.replace({
+                name: '登录'
+            });
+        }, 1500);
     }
 });
+
+router.beforeEach((to, from, next) => {
+    router.options.routes = router.options.getRoutes();
+    next();
+})
 
 new Vue({
     router,

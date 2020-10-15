@@ -83,13 +83,10 @@
                             transformRequest: [this.$mt.transformFormData],
                         }).then(response => {
                             if (response.data.status === 'ok') {
-                                // this.$store.commit('account/setuser', {
-                                //     name: 'test'
-                                // });
                                 window.localStorage.setItem("currentUser", JSON.stringify(response.data.result));
                                 this.$message.success(response.data.message);
                                 this.$router.replace({
-                                    name: '用户管理'
+                                    path: '/bucket'
                                 })
                             } else {
                                 this.$message.error(response.data.message);

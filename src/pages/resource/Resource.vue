@@ -366,6 +366,10 @@
             },
             //点击上传按钮
             onAdd() {
+                if (!this.currentBucket) {
+                    this.$message.warn("您还没有桶，请先去创建一个吧");
+                    return;
+                }
                 this.form = {
                     bucketName: this.currentBucket,
                     pathname: this.currentPath

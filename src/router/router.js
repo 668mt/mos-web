@@ -3,16 +3,16 @@ import Router from 'vue-router'
 import Login from "../pages/login/Login";
 import MenuView from "../layouts/MenuView";
 import PageView from "../layouts/PageView";
-import Bucket from "../pages/bucket/Bucket";
 import User from "../pages/user/User";
+import Bucket from "../pages/bucket/Bucket";
 import Resource from "../pages/resource/Resource";
 
 Vue.use(Router);
-let user = JSON.parse(window.localStorage.getItem("currentUser"));
-user = user || {};
 
-export default new Router({
-    routes: [
+let getRoutes = function(){
+    let user = JSON.parse(window.localStorage.getItem("currentUser"));
+    user = user || {};
+    return [
         {
             path: '/signin',
             name: '登录',
@@ -36,10 +36,10 @@ export default new Router({
                     name: '用户管理',
                     component: User,
                     icon: 'none',
-                    invisible:!user.isAdmin
+                    invisible: !user.isAdmin
                 }, {
                     path: '/bucket',
-                    name: 'bucket管理',
+                    name: '桶管理',
                     component: Bucket,
                     icon: 'none'
                 }, {
@@ -50,6 +50,11 @@ export default new Router({
                 },]
             },]
         },
-    ],
-    mode: 'history'
+    ];
+}
+
+export default new Router({
+    routes: getRoutes(),
+    mode: 'history',
+    getRoutes
 })

@@ -202,7 +202,7 @@
                 },
                 rules: {
                     bucketName: [
-                        {required: true, message: '请输入bucketName', trigger: 'blur'},
+                        {required: true, message: '请输入桶名称', trigger: 'blur'},
                     ],
                 },
                 grantVisible: false,
