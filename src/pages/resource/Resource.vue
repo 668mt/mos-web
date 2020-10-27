@@ -6,7 +6,7 @@
 				<a-button type="primary" @click="onBatchDelete" :disabled="this.selectedRowKeys.length === 0">批量删除
 				</a-button>
 				<a-input-search placeholder="输入搜索内容" style="margin-left:15px;width: 200px" v-model="keyWord"
-								@search="onSearch()" @change="onSearch()"/>
+								@search="onSearch()" @change="pressEnter()"/>
 				<a-select v-model="currentBucket" style="width:150px;float: right;">
 					<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
 						{{bucket.bucketName}}
