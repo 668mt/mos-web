@@ -80,6 +80,9 @@
 					<a-form-model-item label="桶名称" prop="bucketName">
 						<a-input v-model="form.bucketName"/>
 					</a-form-model-item>
+					<a-form-model-item label="数据分片" prop="dataFragmentsAmount">
+						<a-input-number style="width:100%;" v-model="form.dataFragmentsAmount"/>
+					</a-form-model-item>
 					<a-form-model-item label="默认权限" prop="defaultIsPublic">
 						<a-radio-group v-model="form.defaultIsPublic">
 							<a-radio :value="true">公开</a-radio>
@@ -133,6 +136,10 @@
             title: '默认权限',
             dataIndex: 'defaultIsPublic',
             scopedSlots: {customRender: 'defaultIsPublic'},
+        },
+        {
+            title: '分片数',
+            dataIndex: 'dataFragmentsAmount',
         },
         {
             title: '创建时间',
@@ -191,7 +198,8 @@
                 form: {
                     id: null,
                     bucketName: '',
-                    defaultIsPublic: false
+                    defaultIsPublic: false,
+                    dataFragmentsAmount:1
                 },
                 accessForm: {
                     openId: null,
@@ -267,7 +275,8 @@
                 this.form = {
                     id: null,
                     bucketName: '',
-                    defaultIsPublic: false
+                    defaultIsPublic: false,
+                    dataFragmentsAmount:1
                 };
                 this.showModal();
             },

@@ -6,7 +6,7 @@
 				<a-button type="primary" @click="onBatchDelete" :disabled="this.selectedRowKeys.length === 0">批量删除
 				</a-button>
 				<a-input-search placeholder="输入搜索内容" style="margin-left:15px;width: 200px" v-model="keyWord"
-								@search="onSearch()"/>
+								@search="onSearch()" @change="onSearch()"/>
 				<a-select v-model="currentBucket" style="width:150px;float: right;">
 					<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
 						{{bucket.bucketName}}
@@ -15,15 +15,15 @@
 			</div>
 		</a-row>
 		<div style="margin:10px;">
-			<a class="dir-nav" @click="changeCurrentPath(lastDir? lastDir.path : '/')" :disabled="!lastDir">
+			<a class="dir-nav" @click="changeCurrentPath(lastDir)" :disabled="!lastDir">
 				<a-icon type="rollback"/>
 			</a>
 			<span v-if="parentDirs.length > 0">
 				<a style="margin-left:10px;" class="dir-nav" v-for="dir in parentDirs" :key="dir.path"
-				   @click="changeCurrentPath(dir.path)">{{dir.path}}</a>
+				   @click="changeCurrentPath(dir)">{{dir.path}}</a>
 			</span>
 			<span class="current" style="margin-left:10px;">
-				{{currentPath}}
+				{{currentDir.path}}
 			</span>
 		</div>
 		<a-table :columns="columns" :data-source="data" :pagination="pagination"
@@ -33,14 +33,14 @@
 			<span slot="name" slot-scope="text,record">
 				<span v-if="record.isDir">
 					<icon-font type="icon-weibiaoti-_huabanfuben" style="font-size:18px;"/>
-					<a class="resource-link" @click="changeCurrentPath(record.path)">
+					<a class="resource-link" @click="changeCurrentPath(record)">
 						/{{record.fileName}}
 					</a>
 				</span>
 				<span v-else>
 					<icon-font v-if="record.icon" :type="record.icon" style="font-size:16px;"/>
 					<icon-font v-else type="icon-wenjian" style="font-size:16px;"/>
-					<a style="margin-left:8px;" class="resource-link" :href="`/mos/${currentBucket}${record.path}`"
+					<a style="margin-left:8px;" class="resource-link" :href="`/mos/${currentBucket}${record.urlEncodePath}`"
 					   target="_blank">
 						{{record.fileName}}
 					</a>
@@ -73,15 +73,20 @@
 			<a-modal v-model="visible" title="上传" @ok="handleOk"
 					 okText="上传"
 					 :confirmLoading="uploading"
+					 :maskClosable="false"
+					 :destroyOnClose="true"
 			>
 				<a-form :form="form">
-					<a-progress :percent="uploadPercent" v-if="uploadPercent > 0"/>
+					<a-progress :percent="uploadPercent" v-if="uploading"/>
 					<a-form-item v-bind="formItemLayout" label="桶">
 						<a-select v-decorator="['bucketName',{rules: [{required: true,message: '请选择桶',}],},]">
 							<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
 								{{bucket.bucketName}}
 							</a-select-option>
 						</a-select>
+					</a-form-item>
+					<a-form-item v-bind="formItemLayout" label="是否覆盖">
+						<a-switch v-decorator="['cover']" @change="onCoverChange"/>
 					</a-form-item>
 					<a-form-item v-bind="formItemLayout" label="文件">
 						<a-upload :file-list="fileList" :multiple="true" :remove="handleRemove"
@@ -94,14 +99,18 @@
 					</a-form-item>
 					<a-form-item v-bind="formItemLayout" v-for="(file,index) in fileList" :key="index"
 								 :label="`文件${index+1}`"
-								 has-feedback>
-						<a-input
+								 :has-feedback="false">
+						<a-input-search
 								v-decorator="['pathnames['+index+']',{rules: [{required: true,message: '文件名必填'},{
 								    validator:checkPathname,
-								    message:'文件已存在'
 								}],},]"
 								type="text"
-						/>
+								@search="handleRemove(file)"
+						>
+							<a-button slot="enterButton">
+								<a-icon type="delete"/>
+							</a-button>
+						</a-input-search>
 					</a-form-item>
 				</a-form>
 			</a-modal>
@@ -132,14 +141,15 @@
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
-			<a-modal v-model="editVisible" title="资源详情" @ok="editHandleOk" okText="保存">
+			<a-modal v-model="editVisible" title="资源详情" :confirmLoading="saving" @ok="editHandleOk" okText="保存">
 				<a-form-model
 						ref="editForm"
+						:rules="editRules"
 						:label-col="{span:6}"
 						:wrapper-col="{span:12}"
 						:model="editForm">
-					<a-form-model-item label="资源名" prop="fileName">
-						<a-input v-model="editForm.fileName" disabled/>
+					<a-form-model-item label="资源名" prop="pathname">
+						<a-input v-model="editForm.pathname"/>
 					</a-form-model-item>
 					<a-form-model-item label="权限" prop="isPublic">
 						<a-radio-group v-model="editForm.isPublic">
@@ -176,8 +186,12 @@
             scopedSlots: {customRender: 'isPublic'}
         },
         {
-            title: '创建时间',
-            dataIndex: 'createdDate',
+            title: '修改时间',
+            dataIndex: 'updatedDate',
+        },
+        {
+            title: '修改人',
+            dataIndex: 'updatedBy',
         },
         {
             title: '操作',
@@ -197,6 +211,12 @@
                     if (value === '') {
                         callback();
                     }
+                    if(/[:*?"<>|]/.test(value)){
+                        callback(new Error('资源名不能包含: * ? " < > | '));
+                    }
+                    if (this.cover) {
+                        callback();
+                    }
                     let bucketName = this.form.getFieldValue('bucketName');
                     this.$http.get(`/upload/${bucketName}/isExists`, {
                         params: {
@@ -205,7 +225,7 @@
                     }).then(response => {
                         let isExists = response.data.result;
                         if (isExists) {
-                            callback(new Error(rule.message));
+                            callback(new Error('资源已存在'));
                         } else {
                             callback();
                         }
@@ -214,7 +234,10 @@
                 lastDir: null,
                 parentDirs: [],
                 currentBucket: null,
-                currentPath: '/',
+                currentDir:{
+                    path:'/',
+					urlEncodePath:'/'
+				},
                 data: [],
                 columns,
                 pagination: {
@@ -249,8 +272,10 @@
                     },
                 },
                 uploading: false,
+                saving: false,
                 selectedRowKeys: [],
                 addrVisible: false,
+                cover: false,
                 addrForm: {
                     signUrl: '',
                     openId: null,
@@ -261,9 +286,12 @@
                 openIds: [],
                 editVisible: false,
                 editForm: {
-                    fileName: null,
+                    pathname: null,
                     isPublic: false,
                     contentType: null
+                },
+                editRules: {
+                    // pathname: [{required: true, message: '请输入资源名', trigger: 'blur'}],
                 },
                 allContentTypes: [
                     'text/html;charset=UTF-8', 'text/xml;charset=UTF-8', 'text/plain;charset=UTF-8', 'application/json;charset=UTF-8', 'application/octet-stream',
@@ -321,7 +349,7 @@
                 this.fetch({
                     pageNum: 1,
                     pageSize: pagination.pageSize,
-                    path: this.currentPath,
+                    path: this.currentDir.urlEncodePath,
                     keyWord: this.keyWord
                 });
             },
@@ -331,7 +359,7 @@
                 this.fetch({
                     pageNum: 1,
                     pageSize: this.pagination.pageSize,
-                    path: this.currentPath,
+                    path: this.currentDir.urlEncodePath,
                     keyWord: this.keyWord
                 });
             },
@@ -372,27 +400,28 @@
                 }
                 this.form = {
                     bucketName: this.currentBucket,
-                    pathname: this.currentPath
+                    pathname: this.currentDir.path
                 };
                 this.$nextTick().then(value => {
                     this.form.setFieldsValue({
-                        bucketName: this.currentBucket
+                        bucketName: this.currentBucket,
+                        pathnames: []
                     })
-                })
+                });
+                this.cover = false;
                 this.uploadPercent = 0;
-                this.visible = true;
-                this.form.pathnames = [];
                 this.fileList = [];
                 this.form = this.$form.createForm(this, {name: 'register'});
+                this.visible = true;
             },
-            changeCurrentPath(path) {
+            changeCurrentPath(dir) {
                 this.fetch({
                     pageNum: 1,
                     pageSize: this.pagination.pageSize,
-                    path: path,
+                    path: dir ? dir.urlEncodePath : '/',
                     keyWord: this.keyWord
                 }, () => {
-                    this.currentPath = path;
+                    this.currentDir = dir;
                 });
             },
             onDelete(record, type) {
@@ -466,16 +495,19 @@
                 this.fetch({
                     pageNum: pagination.current,
                     pageSize: pagination.pageSize,
-                    path: this.currentPath,
+                    path: this.currentDir.urlEncodePath,
                     keyWord: this.keyWord
                 });
             },
-            fetch(params = {pageNum: 1, pageSize: 10, path: this.currentPath, keyWord: this.keyWord}, callback) {
+            fetch(params = {pageNum: 1, pageSize: 10, path: this.currentDir.urlEncodePath, keyWord: this.keyWord}, callback) {
                 this.$http.get("/member/resource/" + this.currentBucket + params.path, {
                     params: params
                 }).then(value => {
                     const result = value.data.result;
-                    this.currentPath = !result.currentDir ? '/' : result.currentDir.path;
+                    this.currentDir = !result.currentDir ? {
+                        path:'/',
+						urlEncodePath: '/'
+					} : result.currentDir;
                     this.parentDirs = result.parentDirs;
                     this.lastDir = result.lastDir;
                     const pagination = {...this.pagination};
@@ -499,29 +531,9 @@
                     if (!err) {
                         const pathnames = values.pathnames;
                         const bucketName = values.bucketName;
-
-                        // this.uploadings = [];
-                        // for (let i = 0; i < this.fileList.length; i++) {
-                        //     this.uploadings.push(true);
-                        // }
-                        // this.uploading = true;
-                        // let checkUploadThread = setInterval(() => {
-                        //     let done = true;
-                        //     for (let i = 0; i < this.uploadings.length; i++) {
-                        //         if (this.uploadings[i]) {
-                        //             done = false;
-                        //             break;
-                        //         }
-                        //     }
-                        //     if (done) {
-                        //         clearInterval(checkUploadThread);
-                        //         this.uploading = false;
-                        //         this.$message.success("上传成功!");
-                        //         this.visible = false;
-                        //         this.fetch();
-                        //     }
-                        // }, 500);
+                        const cover = values.cover === undefined ? false : values.cover;
                         const formData = new FormData();
+                        formData.append("cover", cover);
                         this.fileList.forEach(file => {
                             formData.append('files', file);
                         });
@@ -543,6 +555,9 @@
                                     params: params
                                 }).then(res => {
                                     this.uploadPercent = parseFloat((res.data.result * 100).toFixed(0));
+                                    if (this.uploadPercent >= 100) {
+                                        this.uploadPercent = 99;
+                                    }
                                 });
                             }, 500);
                             console.log("开始上传")
@@ -555,12 +570,12 @@
                                 console.log("上传成功");
                                 this.uploading = false;
                                 clearInterval(t);
+                                this.uploadPercent = 100;
                                 this.$message.success("上传成功!");
                                 this.visible = false;
                                 this.reload();
                             }, reason => {
                                 console.log("上传失败");
-                                this.$message.success("上传失败!");
                                 this.uploading = false;
                                 clearInterval(t);
                             });
@@ -573,16 +588,34 @@
                 const index = this.fileList.indexOf(file);
                 const newFileList = this.fileList.slice();
                 newFileList.splice(index, 1);
+                const pathnames = this.form.getFieldValue('pathnames');
+                const newPathnames = pathnames.slice();
+                newPathnames.splice(index, 1);
+                const errorPathnames = this.form.getFieldsError().pathnames;
+                const newErrorPathnames = errorPathnames.slice();
+                newErrorPathnames.splice(index, 1);
+                this.form.setFieldsValue({
+                    "pathnames": newPathnames
+                });
+                for (let i = 0; i < newErrorPathnames.length; i++) {
+                    if (newErrorPathnames[i]) {
+                        this.form.validateFields([`pathnames[${i}]`]);
+                    }
+                }
                 this.fileList = newFileList;
             },
             getUploadPathname(name) {
                 let pathname;
-                if (this.currentPath === '/') {
-                    pathname = this.currentPath + name;
+                if (this.currentDir.path === '/') {
+                    pathname = this.currentDir.path + name;
                 } else {
-                    pathname = this.currentPath + '/' + name;
+                    pathname = this.currentDir.path + '/' + name;
                 }
                 return pathname;
+            },
+            onCoverChange(cover) {
+                this.cover = cover;
+                this.form.validateFields();
             },
             beforeUpload(file) {
                 for (let f of this.fileList) {
@@ -591,28 +624,33 @@
                     }
                 }
                 this.fileList.push(file);
-                for (let i = 0; i < this.fileList.length; i++) {
-                    const pathname = this.getUploadPathname(this.fileList[i].name);
-                    let obj = {};
-                    let key = `pathnames[${i}]`;
-                    obj[key] = pathname;
-                    this.$nextTick().then(value => {
-                        this.form.setFieldsValue(obj);
-                        this.form.validateFields([key]);
-                    })
-                }
+
+                const pathname = this.getUploadPathname(file.name);
+                let obj = {};
+                let key = `pathnames[${this.fileList.length - 1}]`;
+                obj[key] = pathname;
+                this.$nextTick().then(value => {
+                    this.form.setFieldsValue(obj);
+                    this.form.validateFields([key]);
+                })
                 return false;
             },
             onEditResource(record) {
+                this.saving = false;
                 this.editForm = {...record}
+                this.editForm.pathname = record.path;
                 this.editVisible = true;
             },
             //编辑资源
             editHandleOk() {
+                this.saving = true;
                 this.$http.put(`/member/resource/${this.currentBucket}/${this.editForm.id}`, this.editForm).then(response => {
                     this.$message.success("更新成功");
                     this.reload();
+                    this.saving = false;
                     this.editVisible = false;
+                }, reason => {
+                    this.saving = false
                 });
             },
             onContentTypeSearch(searchText) {
