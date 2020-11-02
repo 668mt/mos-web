@@ -8,6 +8,26 @@ import mt from './utils/mt'
 import store from './store'
 import 'animate.css/source/animate.css'
 
+import 'viewerjs/dist/viewer.css'
+import Viewer from 'v-viewer'
+
+Vue.use(Viewer, {
+    defaultOptions: {
+        zIndex: 9999,
+        inline: false,
+        toolbar: true,//显示工具栏
+        tooltip: true,//显示缩放百分比
+        movable: true,//是否可移动
+        zoomable: true,//是否可缩放
+        rotatable: false,//是否可旋转
+        scalable: false,//是否可翻转
+        transition: true,
+        fullscreen: false,
+        keyboard: true,
+        url: 'src'
+    }
+});
+
 Vue.prototype.$http = axios;
 Vue.prototype.$mt = mt;
 Vue.config.productionTip = false;

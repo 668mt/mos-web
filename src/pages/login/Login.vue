@@ -16,27 +16,35 @@
 						@submit="handleSubmit"
 				>
 					<a-form-item>
-						<a-input
-								v-decorator="[
-          'username',
-          { rules: [{ required: true, message: '请输入用户名!' }] },
-        ]"
-								placeholder="用户名"
+						<a-input @change="usernameChange"
+								 v-decorator="['username',{ rules: [{ required: true, message: '请输入用户名!' }] },]"
+								 placeholder="用户名"
 						>
 							<a-icon slot="prefix" type="user" style="color: rgba(0,0,0,.25)"/>
 						</a-input>
 					</a-form-item>
 					<a-form-item>
 						<a-input
-								v-decorator="[
-          'password',
-          { rules: [{ required: true, message: '请输入密码!' }] },
-        ]"
+								v-decorator="['password',{ rules: [{ required: true, message: '请输入密码!' }] },]"
 								type="password"
 								placeholder="密码"
 						>
 							<a-icon slot="prefix" type="lock" style="color: rgba(0,0,0,.25)"/>
 						</a-input>
+					</a-form-item>
+					<a-form-item v-if="needCode">
+						<a-row :gutter="8">
+							<a-col :span="14">
+								<a-input
+										v-decorator="['code',{ rules: [{ required: true, message: '请输入验证码!' }] },]"
+										type="text"
+										placeholder="验证码"
+								/>
+							</a-col>
+							<a-col :span="10">
+								<img :src="codeSrc" @click="changeCode"/>
+							</a-col>
+						</a-row>
 					</a-form-item>
 					<a-form-item>
 						<!--				<a-checkbox-->
@@ -72,7 +80,25 @@
         beforeCreate() {
             this.form = this.$form.createForm(this, {name: 'normal_login'});
         },
+        data() {
+            return {
+                codeSrc: '/kaptcha',
+                needCode: false
+            }
+        },
         methods: {
+            changeCode() {
+                this.codeSrc = '/kaptcha?t=' + Math.random()
+            },
+            usernameChange(e) {
+                let username = e.target.value;
+                this.checkNeedCode(username);
+            },
+            checkNeedCode(username) {
+                this.$http.get('/kaptcha/check/' + username).then(response => {
+                    this.needCode = response.data.result;
+                })
+            },
             handleSubmit(e) {
                 e.preventDefault();
                 this.form.validateFields((err, values) => {
@@ -86,11 +112,16 @@
                                 window.localStorage.setItem("currentUser", JSON.stringify(response.data.result));
                                 this.$message.success(response.data.message);
                                 this.$router.replace({
-                                    path: '/bucket'
+                                    path: '/resource'
                                 })
                             } else {
                                 this.$message.error(response.data.message);
+                                this.checkNeedCode(values.username);
+                                this.changeCode();
                             }
+                        }, reason => {
+                            this.checkNeedCode(values.username);
+                            this.changeCode();
                         });
                     }
                 });

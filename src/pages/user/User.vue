@@ -10,11 +10,23 @@
 				<span slot="isEnable" slot-scope="text" :style="!text ? {color:'red'} : ''">
 					{{text?'启用':'禁用'}}
 				</span>
+				<span slot="locked" slot-scope="text" :style="text ? {color:'red'} : ''">
+					{{text?'是':'否'}}
+				</span>
 				<span slot="isAdmin" slot-scope="text" :style="text ? {color:'red'} : ''">
 					{{text?'是':'否'}}
 				</span>
 				<span slot="action" slot-scope="text,record">
 					<a @click="onEdit(record)">编辑</a>
+					<a-divider type="vertical"/>
+					<a-popconfirm
+							title="是否删除?"
+							ok-text="是"
+							cancel-text="否"
+							@confirm="unlock(record)"
+					>
+						<a>解锁</a>
+					</a-popconfirm>
 					<a-divider type="vertical"/>
 					<a-popconfirm
 							title="是否删除?"
@@ -71,14 +83,19 @@
             dataIndex: 'name',
         },
         {
+            title: '是否管理员',
+            dataIndex: 'isAdmin',
+            scopedSlots: {customRender: 'isAdmin'},
+        },
+        {
             title: '是否启用',
             dataIndex: 'isEnable',
             scopedSlots: {customRender: 'isEnable'},
         },
         {
-            title: '是否管理员',
-            dataIndex: 'isAdmin',
-            scopedSlots: {customRender: 'isAdmin'},
+            title: '是否被锁定',
+            dataIndex: 'locked',
+            scopedSlots: {customRender: 'locked'},
         },
         {
             title: '创建时间',
@@ -135,6 +152,12 @@
             this.fetch();
         },
         methods: {
+            unlock(record){
+                this.$http.put('/admin/user/unlock/'+record.username).then(response => {
+                    this.$message.success("解锁成功!");
+                    this.fetch();
+				});
+			},
             handleSearch(values) {
                 this.fetch({
                     pageSize: this.pagination.pageSize,

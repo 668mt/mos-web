@@ -2,8 +2,7 @@
 	<div>
 		<a-dropdown style="display: inline-block; height: 100%; vertical-align: initial">
     <span style="cursor: pointer">
-<!--      <a-avatar class="avatar" size="small" shape="circle" :src="currUser.avatar"/>-->
-		<a-avatar size="large" style="color: #f56a00; backgroundColor: #fde3cf">
+		<a-avatar size="large" style="backgroundColor: #f56a00">
       {{currentName}}
     </a-avatar>
     </span>

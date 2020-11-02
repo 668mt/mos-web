@@ -15,13 +15,16 @@
 			</div>
 		</a-row>
 		<div style="margin:10px;">
-			<a class="dir-nav" @click="changeCurrentPath(lastDir)" :disabled="!lastDir">
+			<!-- 返回 -->
+			<a class="dir-nav" @click="back(lastDir)" :disabled="!lastDir">
 				<a-icon type="rollback"/>
 			</a>
+			<!-- 父路径 -->
 			<span v-if="parentDirs.length > 0">
 				<a style="margin-left:10px;" class="dir-nav" v-for="dir in parentDirs" :key="dir.path"
-				   @click="changeCurrentPath(dir)">{{dir.path}}</a>
+				   @click.once="changeCurrentPath(dir)">{{dir.path}}</a>
 			</span>
+			<!-- 当前路径 -->
 			<span class="current" style="margin-left:10px;">
 				{{currentDir.path}}
 			</span>
@@ -29,18 +32,32 @@
 		<a-table :columns="columns" :data-source="data" :pagination="pagination"
 				 :row-selection="rowSelection"
 				 :rowKey="(row) => {return row.id}"
+				 :scroll="{ x: 1500 }"
 				 @change="handleTableChange">
 			<span slot="name" slot-scope="text,record">
 				<span v-if="record.isDir">
-					<icon-font type="icon-weibiaoti-_huabanfuben" style="font-size:18px;"/>
-					<a class="resource-link" @click="changeCurrentPath(record)">
+					<!-- 文件夹 -->
+					<icon-font class="resource-icon" type="icon-weibiaoti-_huabanfuben" style="font-size:18px;"/>
+					<a :id="record.id" :class="getResourceClass(record)" @click="changeCurrentPath(record)">
 						/{{record.fileName}}
 					</a>
 				</span>
 				<span v-else>
-					<icon-font v-if="record.icon" :type="record.icon" style="font-size:16px;"/>
-					<icon-font v-else type="icon-wenjian" style="font-size:16px;"/>
-					<a style="margin-left:8px;" class="resource-link" :href="`/mos/${currentBucket}${record.urlEncodePath}`"
+					<!-- 文件 -->
+					<icon-font class="resource-icon" v-if="record.icon" :type="record.icon" style="font-size:16px;"/>
+					<icon-font class="resource-icon" v-else type="icon-wenjian" style="font-size:16px;"/>
+					
+					<!-- 图片展示 -->
+					<a :id="record.id" v-if="record.image"
+					   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
+					   :class="getResourceClass(record)"
+					>
+						{{record.fileName}}
+					</a>
+					<a :id="record.id" v-else
+					   :class="getResourceClass(record)"
+					   :href="`/mos/${currentBucket}${record.urlEncodePath}`"
+					   @click="onRecentClick(record)"
 					   target="_blank">
 						{{record.fileName}}
 					</a>
@@ -66,6 +83,8 @@
 					<a @click="onEditResource(record)">编辑</a>
 					<a-divider type="vertical"/>
 					<a @click="openGenAddr(record)">访问链</a>
+					<a-divider type="vertical"/>
+					<a :href="`/mos/${currentBucket}${record.urlEncodePath}?download=true`">下载</a>
 				</span>
 			</span>
 		</a-table>
@@ -87,6 +106,19 @@
 					</a-form-item>
 					<a-form-item v-bind="formItemLayout" label="是否覆盖">
 						<a-switch v-decorator="['cover']" @change="onCoverChange"/>
+					</a-form-item>
+					<a-form-item v-bind="formItemLayout" label="权限">
+						<a-radio-group v-decorator="['isPublic']" :default-value="false">
+							<a-radio :value="true">公开</a-radio>
+							<a-radio :value="false">私有</a-radio>
+						</a-radio-group>
+					</a-form-item>
+					<a-form-item v-bind="formItemLayout" label="响应头">
+						<a-auto-complete
+								v-decorator="['contentType']"
+								:data-source="contentTypeDataSource"
+								@search="onContentTypeSearch"
+						/>
 					</a-form-item>
 					<a-form-item v-bind="formItemLayout" label="文件">
 						<a-upload :file-list="fileList" :multiple="true" :remove="handleRemove"
@@ -166,39 +198,24 @@
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
+			<viewer :trigger="images" class="viewer" ref="viewer" @inited="inited">
+				<img style="display: none" v-for="src in images" :src="src" :key="src">
+			</viewer>
 		</div>
 	</a-card>
 </template>
 <script>
     const columns = [
-        {
-            title: '文件名',
-            dataIndex: 'name',
-            scopedSlots: {customRender: 'name'},
-        },
-        {
-            title: '文件大小',
-            dataIndex: 'readableSize',
-        },
-        {
-            title: '权限',
-            dataIndex: 'isPublic',
-            scopedSlots: {customRender: 'isPublic'}
-        },
-        {
-            title: '修改时间',
-            dataIndex: 'updatedDate',
-        },
-        {
-            title: '修改人',
-            dataIndex: 'updatedBy',
-        },
-        {
-            title: '操作',
-            scopedSlots: {customRender: 'action'},
-        },
+        {title: '文件名', dataIndex: 'name', width: 300, scopedSlots: {customRender: 'name'}, sorter: true},
+        {title: '文件大小', dataIndex: 'readableSize', width: 120, sorter: true},
+        {title: '权限', dataIndex: 'isPublic', width: 120, scopedSlots: {customRender: 'isPublic'}, sorter: true},
+        {title: '响应头', dataIndex: 'contentType', width: 200},
+        {title: '修改时间', dataIndex: 'updatedDate', width: 160, sorter: true},
+        {title: '修改人', dataIndex: 'updatedBy', width: 120, sorter: true},
+        {title: '操作', width: 220, scopedSlots: {customRender: 'action'},},
     ];
     import {Icon} from 'ant-design-vue';
+    import $ from 'jquery'
 
     const IconFont = Icon.createFromIconfontCN({
         scriptUrl: '//at.alicdn.com/t/font_1836787_2a565rchgum.js',
@@ -206,12 +223,17 @@
     export default {
         data() {
             return {
+                locations: {
+                    lastLocation: [],
+                    current: {}
+                },
+                images: [],
                 uploadPercent: 0,
                 checkPathname: (rule, value, callback) => {
                     if (value === '') {
                         callback();
                     }
-                    if(/[:*?"<>|]/.test(value)){
+                    if (/[:*?"<>|]/.test(value)) {
                         callback(new Error('资源名不能包含: * ? " < > | '));
                     }
                     if (this.cover) {
@@ -234,10 +256,10 @@
                 lastDir: null,
                 parentDirs: [],
                 currentBucket: null,
-                currentDir:{
-                    path:'/',
-					urlEncodePath:'/'
-				},
+                currentDir: {
+                    path: '/',
+                    urlEncodePath: '/'
+                },
                 data: [],
                 columns,
                 pagination: {
@@ -300,7 +322,17 @@
                     'application/rss+xml', 'application/problem+xml', 'application/problem+json;charset=UTF-8', 'application/problem+json'
                 ],
                 contentTypeDataSource: [],
-
+                sortField: null,
+                sortOrder: null,
+                queryAlias: {
+                    pageNum: 'n',
+                    pageSize: 's',
+                    urlEncodePath: 'p',
+                    keyWord: 'k',
+                    sortField: 'f',
+                    sortOrder: 'o'
+                },
+                historyClicks: []
             };
         },
         computed: {
@@ -308,7 +340,7 @@
                 const {selectedRowKeys} = this;
                 return {
                     selectedRowKeys,
-                    columnWidth: "10px",
+                    columnWidth: "40px",
                     onChange: this.onSelectChange,
                     hideDefaultSelections: true,
                     selections: [
@@ -339,28 +371,103 @@
                 };
             },
         },
+        destroyed() {
+            window.removeEventListener("popstate", this.popHandler);
+        },
         mounted() {
+            window.addEventListener("popstate", this.popHandler, false);
+
+            const queryParams = this.$route.query;
+            if (queryParams) {
+                if (queryParams.n) {
+                    this.pagination.current = parseInt(queryParams.n);
+                }
+                if (queryParams.s) {
+                    this.pagination.pageSize = parseInt(queryParams.s);
+                }
+                if (queryParams.p) {
+                    this.currentDir.urlEncodePath = queryParams.p;
+                }
+                if (queryParams.k) {
+                    this.keyWord = queryParams.k;
+                }
+                if (queryParams.f) {
+                    this.sortField = queryParams.f;
+                }
+                if (queryParams.o) {
+                    this.sortOrder = queryParams.o;
+                }
+            }
             this.fetchBucket();
             this.contentTypeDataSource = [...this.allContentTypes];
+            $(".ant-table-body").css("overflow-x", "auto");
+
         },
         watch: {
             currentBucket() {
                 let pagination = this.pagination;
+                let current = pagination.current ? pagination.current : 1;
                 this.fetch({
-                    pageNum: 1,
+                    pageNum: current,
                     pageSize: pagination.pageSize,
                     path: this.currentDir.urlEncodePath,
-                    keyWord: this.keyWord
+                    keyWord: this.keyWord,
+                    sortField: this.sortField,
+                    sortOrder: this.sortOrder
                 });
             },
+            data() {
+                this.images = this.data.filter(record => {
+                    return record.image;
+                }).map(record => {
+                    return `/mos/${this.currentBucket}${record.urlEncodePath}`;
+                });
+            }
         },
         methods: {
+            getResourceClass(record) {
+                let contains = false;
+                for (let path of this.historyClicks) {
+                    if (path === record.path) {
+                        contains = true;
+                        break;
+                    }
+                }
+                return 'resource-link ' + (contains ? 'activeAnchor' : '');
+            },
+            onRecentClick(record) {
+                this.historyClicks.push(record.path);
+            },
+            popHandler(e) {
+                const params = e.state;
+                if (params && params.path) {
+                    this.changeCurrentPath({
+                        path: params.path,
+                        urlEncodePath: params.urlEncodePath
+                    }, params, true)
+                }
+            },
+            inited(viewer) {
+                this.$viewer = viewer
+            },
+            showImages(url, record) {
+                if (record) {
+                    this.onRecentClick(record);
+                }
+                for (let i = 0; i < this.images.length; i++) {
+                    if (this.images[i].indexOf(url) !== -1) {
+                        this.$viewer.view(i);
+                    }
+                }
+            },
             onSearch() {
                 this.fetch({
                     pageNum: 1,
                     pageSize: this.pagination.pageSize,
                     path: this.currentDir.urlEncodePath,
-                    keyWord: this.keyWord
+                    keyWord: this.keyWord,
+                    sortField: this.sortField,
+                    sortOrder: this.sortOrder
                 });
             },
             openGenAddr(record) {
@@ -382,12 +489,10 @@
                 let body = {...this.addrForm};
                 this.$http.post('/member/access/sign', body).then(response => {
                     this.addrForm.signUrl = response.data.result;
-                    console.log(response.data.result)
                 });
             },
             addrHandleOk() {
                 this.genAddr();
-                // this.addrVisible = false;
             },
             onSelectChange(selectedRowKeys, selectedRows) {
                 this.selectedRowKeys = selectedRowKeys;
@@ -414,13 +519,54 @@
                 this.form = this.$form.createForm(this, {name: 'register'});
                 this.visible = true;
             },
-            changeCurrentPath(dir) {
-                this.fetch({
+            back(dir) {
+                history.back();
+            },
+            getHistoryParams(extendParams) {
+                extendParams = extendParams || {};
+                const params = {
+                    pageNum: this.pagination.current,
+                    pageSize: this.pagination.pageSize,
+                    path: this.currentDir.path,
+                    urlEncodePath: this.currentDir.urlEncodePath,
+                    keyWord: this.keyWord,
+                    sortField: this.sortField,
+                    sortOrder: this.sortOrder
+                }
+                $.extend(params, extendParams);
+                let url = "/resource?";
+                for (let key in params) {
+                    const alias = this.queryAlias[key];
+                    const value = params[key];
+                    if (value && alias) {
+                        url += alias + "=" + encodeURIComponent(value) + "&";
+                    }
+                }
+                url = url.substring(0, url.length - 1);
+                params.url = url;
+                return params;
+            },
+            addHistory(extendParams) {
+                let params = this.getHistoryParams(extendParams);
+                history.pushState(params, null, params.url);
+            },
+            changeCurrentPath(dir, extendParams, ignoreHistory) {
+                this.onRecentClick(dir);
+                ignoreHistory = ignoreHistory === undefined ? false : ignoreHistory;
+                let params = {
                     pageNum: 1,
                     pageSize: this.pagination.pageSize,
                     path: dir ? dir.urlEncodePath : '/',
-                    keyWord: this.keyWord
-                }, () => {
+                    keyWord: this.keyWord,
+                    sortField: this.sortField,
+                    sortOrder: this.sortOrder,
+                    ignoreHistory: ignoreHistory,
+                };
+                extendParams = extendParams || {}
+                $.extend(params, extendParams, {
+                    path: dir ? dir.urlEncodePath : '/'
+                })
+                this.fetch(params, () => {
                     this.currentDir = dir;
                 });
             },
@@ -482,6 +628,13 @@
                 pager.current = pagination.current;
                 pager.pageSize = pagination.pageSize;
                 this.pagination = pager;
+                if (sorter && sorter.order) {
+                    this.sortField = sorter.field;
+                    this.sortOrder = sorter.order;
+                } else {
+                    this.sortField = null;
+                    this.sortOrder = null;
+                }
                 this.reload();
             },
             fetchBucket() {
@@ -496,18 +649,27 @@
                     pageNum: pagination.current,
                     pageSize: pagination.pageSize,
                     path: this.currentDir.urlEncodePath,
-                    keyWord: this.keyWord
+                    keyWord: this.keyWord,
+                    sortField: this.sortField,
+                    sortOrder: this.sortOrder
                 });
             },
-            fetch(params = {pageNum: 1, pageSize: 10, path: this.currentDir.urlEncodePath, keyWord: this.keyWord}, callback) {
+            fetch(params = {
+                pageNum: 1,
+                pageSize: 10,
+                path: this.currentDir.urlEncodePath,
+                keyWord: this.keyWord,
+                sortField: null,
+                sortOrder: null,
+            }, callback) {
                 this.$http.get("/member/resource/" + this.currentBucket + params.path, {
                     params: params
                 }).then(value => {
                     const result = value.data.result;
                     this.currentDir = !result.currentDir ? {
-                        path:'/',
-						urlEncodePath: '/'
-					} : result.currentDir;
+                        path: '/',
+                        urlEncodePath: '/'
+                    } : result.currentDir;
                     this.parentDirs = result.parentDirs;
                     this.lastDir = result.lastDir;
                     const pagination = {...this.pagination};
@@ -521,6 +683,9 @@
                         pagination.total = 0;
                     }
                     this.pagination = pagination;
+                    if (!params.ignoreHistory) {
+                        this.addHistory();
+                    }
                     if (callback) {
                         callback();
                     }
@@ -532,8 +697,12 @@
                         const pathnames = values.pathnames;
                         const bucketName = values.bucketName;
                         const cover = values.cover === undefined ? false : values.cover;
+                        const isPublic = values.isPublic === undefined ? false : values.isPublic;
+                        const contentType = values.contentType === undefined ? '' : values.contentType;
                         const formData = new FormData();
                         formData.append("cover", cover);
+                        formData.append("contentType", contentType);
+                        formData.append("isPublic", isPublic);
                         this.fileList.forEach(file => {
                             formData.append('files', file);
                         });
@@ -659,6 +828,7 @@
         },
         components: {
             IconFont
+            // ,Viewer
         }
     };
 </script>
@@ -671,9 +841,16 @@
 		color: #777;
 	}
 	
-	/*a.dir-nav:not(disable){*/
-	/*	color:#333;*/
-	/*}*/
+	a.resource-link.activeAnchor {
+		/*color: #40a9ff;*/
+		color: #52c41a;
+	}
+	
+	.resource-icon {
+		margin-right: 8px;
+	}
+	
+	
 	.path {
 		margin-right: 15px;
 	}
@@ -684,5 +861,9 @@
 	
 	.tool-btns button {
 		margin-left: 15px;
+	}
+	
+	.ant-table-body {
+		overflow: auto;
 	}
 </style>
