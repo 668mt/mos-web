@@ -842,8 +842,8 @@
 	}
 	
 	a.resource-link.activeAnchor {
-		/*color: #40a9ff;*/
-		color: #52c41a;
+		color: #40a9ff;
+		/*color: #52c41a;*/
 	}
 	
 	.resource-icon {

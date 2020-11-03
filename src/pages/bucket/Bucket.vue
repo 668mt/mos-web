@@ -41,14 +41,7 @@
 					:columns="innerColumns"
 					:data-source="innerData"
 					:pagination="false">
-				<a-tooltip slot="publicKey" slot-scope="text">
-					<template slot="title">
-						{{text}}
-					</template>
-					<div style="width:200px;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">{{text}}
-					</div>
-				</a-tooltip>
-				<a-tooltip slot="privateKey" slot-scope="text">
+				<a-tooltip slot="secretKey" slot-scope="text">
 					<template slot="title">
 						{{text}}
 					</template>
@@ -161,15 +154,10 @@
         }, {
             title: '用途',
             dataIndex: 'useInfo'
-        }, {
-            title: '公钥',
-            dataIndex: 'publicKey',
-            scopedSlots: {customRender: 'publicKey'},
-            ellipsis: true
-        }, {
+        },{
             title: '私钥',
-            dataIndex: 'privateKey',
-            scopedSlots: {customRender: 'privateKey'},
+            dataIndex: 'secretKey',
+            scopedSlots: {customRender: 'secretKey'},
             ellipsis: true
         }, {
             title: '创建时间',
