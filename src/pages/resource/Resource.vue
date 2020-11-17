@@ -244,8 +244,8 @@
                     if (value === '') {
                         callback();
                     }
-                    if (/[:*?"<>|]/.test(value)) {
-                        callback(new Error('资源名不能包含: * ? " < > | '));
+                    if (/[:*?"<>|,]/.test(value)) {
+                        callback(new Error('资源名不能包含: * ? " < > | ,'));
                     }
                     if (this.cover) {
                         callback();
@@ -424,15 +424,23 @@
 			},
             currentBucket() {
                 let pagination = this.pagination;
-                let current = pagination.current ? pagination.current : 1;
+                // let current = pagination.current ? pagination.current : 1;
                 this.fetch({
-                    pageNum: current,
+                    pageNum: 1,
                     pageSize: pagination.pageSize,
-                    path: this.currentDir.urlEncodePath,
-                    keyWord: this.keyWord,
+                    path: '/',
+                    keyWord: '',
                     sortField: this.sortField,
                     sortOrder: this.sortOrder
                 });
+                // this.fetch({
+                //     pageNum: 1,
+                //     pageSize: pagination.pageSize,
+                //     path: this.currentDir.urlEncodePath,
+                //     keyWord: this.keyWord,
+                //     sortField: this.sortField,
+                //     sortOrder: this.sortOrder
+                // });
             },
             data() {
                 this.images = this.data.filter(record => {
@@ -495,8 +503,8 @@
 					isPublic:record.isPublic,
                     fileName: record.fileName,
                     resourceId: record.id,
-                    expireSeconds: 7200,
-                    expireNumber: 2,
+                    expireSeconds: 3600,
+                    expireNumber: 1,
                     expireUnit: 'hour',
                     bucketName: this.currentBucket
                 }
@@ -516,6 +524,10 @@
                 this.addrForm.signUrl = '';
             },
             genAddr() {
+                if(!this.addrForm.openId){
+                    this.$message.warn("请先创建一个秘钥!")
+                    return;
+				}
                 this.addrForm.signUrl = '';
                 let body = {...this.addrForm};
                 let x = 1;

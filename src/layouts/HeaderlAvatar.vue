@@ -37,6 +37,9 @@
 				<a-form-model-item label="姓名" prop="name">
 					<a-input v-model="form.name"/>
 				</a-form-model-item>
+				<a-form-model-item label="当前密码" prop="currentPassword">
+					<a-input type="password" v-model="form.currentPassword" placeholder="不填写表示不修改"/>
+				</a-form-model-item>
 				<a-form-model-item label="密码" prop="password">
 					<a-input type="password" v-model="form.password" placeholder="不填写表示不修改"/>
 				</a-form-model-item>
@@ -68,19 +71,20 @@
                 form: {
                     username: null,
                     name: null,
+                    currentPassword: null,
                     password: null,
                     confirm_password: null
                 },
                 rules: null,
-                currentName:null,
-                currUser:null
+                currentName: null,
+                currUser: null
             }
         },
-		mounted() {
+        mounted() {
             this.currUser = JSON.parse(window.localStorage.getItem("currentUser"));
             let currUser = this.currUser;
             if (currUser.name) {
-                this.currentName = currUser.name.substring(currUser.name.length - 1);
+                this.currentName = currUser.name.substring(currUser.name.length >= 2 ? currUser.name.length - 2 : 0);
             } else {
                 this.currentName = currUser.username;
             }
@@ -118,7 +122,11 @@
                             this.$message.success("修改成功");
                             this.currUser = data;
                             window.localStorage.setItem("currentUser", JSON.stringify(data));
-                            this.currentName = data.name.substring(data.name.length -1);
+                            if (data.name) {
+                                this.currentName = data.name.substring(data.name.length >= 2 ? data.name.length - 2 : 0);
+                            } else {
+                                this.currentName = data.username;
+                            }
                             this.editVisible = false;
                         });
                     }
