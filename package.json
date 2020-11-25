@@ -17,6 +17,7 @@
     "jquery": "3.5.1",
     "less-loader": "^6.1.1",
     "pouchdb": "^7.2.1",
+    "spark-md5": "^3.0.1",
     "v-viewer": "^1.5.1",
     "vue": "^2.6.11",
     "vue-router": "^3.3.4",

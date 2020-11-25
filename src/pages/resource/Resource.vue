@@ -96,7 +96,10 @@
 					 :destroyOnClose="true"
 			>
 				<a-form :form="form">
-					<a-progress :percent="uploadPercent" v-if="uploading"/>
+					<span v-if="uploading">
+						<span>（{{uploadProgress.fileIndex}}/{{uploadProgress.files}}）[{{uploadProgress.current}}] 上传中...</span>
+						<a-progress :percent="uploadProgress.uploadPercent"/>
+					</span>
 					<a-form-item v-bind="formItemLayout" label="桶">
 						<a-select v-decorator="['bucketName',{rules: [{required: true,message: '请选择桶',}],},]">
 							<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
@@ -108,7 +111,7 @@
 						<a-switch v-decorator="['cover']" @change="onCoverChange"/>
 					</a-form-item>
 					<a-form-item v-bind="formItemLayout" label="权限">
-						<a-radio-group v-decorator="['isPublic']" :default-value="false">
+						<a-radio-group v-decorator="['isPublic',{initialValue:false}]">
 							<a-radio :value="true">公开</a-radio>
 							<a-radio :value="false">私有</a-radio>
 						</a-radio-group>
@@ -168,7 +171,8 @@
 					<a-form-model-item label="有效时间" prop="expireNumber">
 						<a-input :min="1" :disabled="addrForm.isPublic || addrForm.expireUnit==='ever'"
 								 type="number" v-model="addrForm.expireNumber" style="width: 100%">
-							<a-select :disabled="addrForm.isPublic" slot="addonAfter" v-model="addrForm.expireUnit" style="width: 70px"
+							<a-select :disabled="addrForm.isPublic" slot="addonAfter" v-model="addrForm.expireUnit"
+									  style="width: 70px"
 									  @change="onExpireUnitChange">
 								<a-select-option value="minute">分钟</a-select-option>
 								<a-select-option value="hour">小时</a-select-option>
@@ -216,6 +220,10 @@
 	</a-card>
 </template>
 <script>
+    import SparkMD5 from "spark-md5"
+    import {Icon} from 'ant-design-vue';
+    import $ from 'jquery'
+
     const columns = [
         {title: '文件名', dataIndex: 'name', width: 300, scopedSlots: {customRender: 'name'}, sorter: true},
         {title: '文件大小', dataIndex: 'readableSize', width: 120, sorter: true},
@@ -225,8 +233,6 @@
         {title: '修改人', dataIndex: 'updatedBy', width: 120, sorter: true},
         {title: '操作', width: 220, scopedSlots: {customRender: 'action'},},
     ];
-    import {Icon} from 'ant-design-vue';
-    import $ from 'jquery'
 
     const IconFont = Icon.createFromIconfontCN({
         scriptUrl: '//at.alicdn.com/t/font_1836787_2a565rchgum.js',
@@ -239,7 +245,6 @@
                     current: {}
                 },
                 images: [],
-                uploadPercent: 0,
                 checkPathname: (rule, value, callback) => {
                     if (value === '') {
                         callback();
@@ -305,6 +310,12 @@
                     },
                 },
                 uploading: false,
+                uploadProgress: {
+                    current: '',
+                    fileIndex: 1,
+                    files: 1,
+                    uploadPercent: 0,
+                },
                 saving: false,
                 selectedRowKeys: [],
                 addrVisible: false,
@@ -343,9 +354,11 @@
                     urlEncodePath: 'p',
                     keyWord: 'k',
                     sortField: 'f',
-                    sortOrder: 'o'
+                    sortOrder: 'o',
+                    currentBucket: 'b'
                 },
-                historyClicks: []
+                historyClicks: [],
+                refreshed: true
             };
         },
         computed: {
@@ -389,7 +402,7 @@
         },
         mounted() {
             window.addEventListener("popstate", this.popHandler, false);
-
+            this.fetchBucket();
             const queryParams = this.$route.query;
             if (queryParams) {
                 if (queryParams.n) {
@@ -410,37 +423,43 @@
                 if (queryParams.o) {
                     this.sortOrder = queryParams.o;
                 }
+                if (queryParams.b) {
+                    this.currentBucket = queryParams.b;
+                }
             }
-            this.fetchBucket();
             this.contentTypeDataSource = [...this.allContentTypes];
             $(".ant-table-body").css("overflow-x", "auto");
 
         },
         watch: {
-            "addrForm.expireNumber"(){
-                if(this.addrForm.expireNumber < 1){
-              		this.addrForm.expireNumber = 1;
-				}
-			},
+            "addrForm.expireNumber"() {
+                if (this.addrForm.expireNumber < 1) {
+                    this.addrForm.expireNumber = 1;
+                }
+            },
             currentBucket() {
                 let pagination = this.pagination;
-                // let current = pagination.current ? pagination.current : 1;
-                this.fetch({
-                    pageNum: 1,
-                    pageSize: pagination.pageSize,
-                    path: '/',
-                    keyWord: '',
-                    sortField: this.sortField,
-                    sortOrder: this.sortOrder
-                });
-                // this.fetch({
-                //     pageNum: 1,
-                //     pageSize: pagination.pageSize,
-                //     path: this.currentDir.urlEncodePath,
-                //     keyWord: this.keyWord,
-                //     sortField: this.sortField,
-                //     sortOrder: this.sortOrder
-                // });
+                if (!this.refreshed) {
+                    this.fetch({
+                        pageNum: 1,
+                        pageSize: pagination.pageSize,
+                        path: '/',
+                        keyWord: '',
+                        sortField: this.sortField,
+                        sortOrder: this.sortOrder
+                    });
+                } else {
+                    let current = pagination.current ? pagination.current : 1;
+                    this.refreshed = false;
+                    this.fetch({
+                        pageNum: current,
+                        pageSize: pagination.pageSize,
+                        path: this.currentDir.urlEncodePath,
+                        keyWord: this.keyWord,
+                        sortField: this.sortField,
+                        sortOrder: this.sortOrder
+                    });
+                }
             },
             data() {
                 this.images = this.data.filter(record => {
@@ -500,7 +519,7 @@
                 this.addrForm = {
                     signUrl: null,
                     openId: null,
-					isPublic:record.isPublic,
+                    isPublic: record.isPublic,
                     fileName: record.fileName,
                     resourceId: record.id,
                     expireSeconds: 3600,
@@ -512,7 +531,7 @@
                 this.$http.get('/member/access/' + this.currentBucket).then(response => {
                     this.openIds = response.data.result;
                     this.addrForm.openId = this.openIds[0].openId;
-                    if(record.isPublic){
+                    if (record.isPublic) {
                         this.genAddr();
                     }
                 });
@@ -524,10 +543,10 @@
                 this.addrForm.signUrl = '';
             },
             genAddr() {
-                if(!this.addrForm.openId){
+                if (!this.addrForm.openId) {
                     this.$message.warn("请先创建一个秘钥!")
                     return;
-				}
+                }
                 this.addrForm.signUrl = '';
                 let body = {...this.addrForm};
                 let x = 1;
@@ -602,7 +621,8 @@
                     urlEncodePath: this.currentDir.urlEncodePath,
                     keyWord: this.keyWord,
                     sortField: this.sortField,
-                    sortOrder: this.sortOrder
+                    sortOrder: this.sortOrder,
+                    currentBucket: this.currentBucket
                 }
                 $.extend(params, extendParams);
                 let url = "/resource?";
@@ -762,6 +782,169 @@
                     }
                 });
             },
+            md5File(file, callback, chunkCallback) {
+                var blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice,
+                    chunkSize = 2097152,                             // Read in chunks of 2MB
+                    chunks = Math.ceil(file.size / chunkSize),
+                    currentChunk = 0,
+                    spark = new SparkMD5.ArrayBuffer(),
+                    fileReader = new FileReader();
+
+                fileReader.onload = function (e) {
+                    spark.append(e.target.result);
+                    currentChunk++;
+                    if (chunkCallback != null) {
+                        chunkCallback(chunks, currentChunk);
+                    }
+                    if (currentChunk < chunks) {
+                        loadNext();
+                    } else {
+                        callback(spark.end());
+                    }
+                };
+
+                fileReader.onerror = function () {
+                    console.warn('oops, something went wrong.');
+                };
+
+                function loadNext() {
+                    var start = currentChunk * chunkSize,
+                        end = ((start + chunkSize) >= file.size) ? file.size : start + chunkSize;
+
+                    fileReader.readAsArrayBuffer(blobSlice.call(file, start, end));
+                }
+
+                loadNext();
+            },
+            splitFile(file, minPartSize = 2 * 1024 * 1024, maxPartSize = 10 * 1024 * 1024, expectChunks = 100) {
+                let totalSize = file.size;
+                let partSize = Math.ceil(totalSize / expectChunks);
+                if (partSize < minPartSize) {
+                    partSize = minPartSize;
+                } else if (partSize > maxPartSize) {
+                    partSize = maxPartSize;
+                }
+                let chunks = Math.ceil(totalSize / partSize);
+                let uploadParts = [];
+                for (let i = 0; i < chunks; i++) {
+                    let uploadPart;
+                    if (i === (chunks - 1)) {
+                        uploadPart = file.slice(i * partSize, totalSize);
+                    } else {
+                        uploadPart = file.slice(i * partSize, (i + 1) * partSize);
+                    }
+                    uploadParts.push(uploadPart);
+                }
+                return {
+                    totalSize, chunks, partSize, uploadParts
+                };
+            },
+            doUploadPart(waitingUpload, index, bucketName, cover, contentType, isPublic, pathname, totalMd5, totalSize, chunks, files, fileIndex, callback) {
+                if (index >= waitingUpload.length) {
+                    callback();
+                    return;
+                }
+                let uploadPart = waitingUpload[index].uploadPart;
+                let chunkIndex = waitingUpload[index].chunkIndex;
+                this.md5File(uploadPart, chunkMd5 => {
+                    const formData = new FormData();
+                    formData.append("cover", cover);
+                    formData.append("contentType", contentType);
+                    formData.append("isPublic", isPublic);
+                    formData.append('file', uploadPart);
+                    formData.append('pathname', pathname);
+                    formData.append('totalMd5', totalMd5);
+                    formData.append('totalSize', totalSize);
+                    formData.append('chunkMd5', chunkMd5);
+                    formData.append('chunkSize', uploadPart.size);
+                    formData.append('chunkIndex', chunkIndex);
+                    let fileName = this.getFileName(pathname);
+                    this.$http.post('/upload/' + bucketName, formData).then(response => {
+                        console.log('分片' + chunkIndex + '上传结果:' + response.data.status);
+                        this.updateUploadProgress(false, fileName, files, fileIndex + 1, 1, 1, chunks, chunkIndex + 1);
+                        index++;
+                        this.doUploadPart(waitingUpload, index, bucketName, cover, contentType, isPublic, pathname, totalMd5, totalSize, chunks, files, fileIndex, callback);
+                    })
+                });
+            },
+            updateUploadProgress(done, current, files, fileIndex, checks, checkIndex, chunks, chunkIndex) {
+                let uploadPercent = done ? 100 : 5 * checkIndex / checks + chunkIndex / chunks * 94;
+                uploadPercent = Math.floor(uploadPercent);
+                this.uploadProgress = {
+                    current, files, fileIndex, uploadPercent
+                };
+            },
+            getFileName(pathname) {
+                let lastIndexOf = pathname.lastIndexOf('/');
+                if (lastIndexOf !== -1) {
+                    return pathname.substring(lastIndexOf + 1)
+                } else {
+                    return pathname;
+                }
+            },
+            uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback) {
+                if (index >= fileList.length) {
+                    callback();
+                    return;
+                }
+                let file = fileList[index];
+                const pathname = pathnames[index];
+                let splitResult = this.splitFile(file);
+                let chunks = splitResult.chunks;
+                const totalSize = splitResult.totalSize;
+                const uploadParts = splitResult.uploadParts;
+                this.uploading = true;
+                const fileName = this.getFileName(pathname);
+                this.uploadProgress.current = fileName;
+                console.log(splitResult)
+                this.md5File(file, totalMd5 => {
+                    let params = {
+                        pathname, chunks, totalMd5, totalSize, contentType, isPublic, cover
+                    };
+                    this.$http.post(`/upload/${bucketName}/init`, this.$mt.transformFormData(params)).then(response => {
+                        let result = response.data.result;
+                        let fileExists = result.fileExists;
+                        let existedChunkIndexs = result.existedChunkIndexs;
+                        if (!fileExists) {
+                            const waitingUpload = [];
+                            uploadParts.forEach((uploadPart, chunkIndex) => {
+                                if (this.$mt.contains(existedChunkIndexs, chunkIndex)) {
+                                    return;
+                                }
+                                waitingUpload.push({
+                                    uploadPart, chunkIndex
+                                });
+                            });
+                            this.doUploadPart(waitingUpload, 0, bucketName, cover, contentType, isPublic, pathname, totalMd5, totalSize, chunks, this.fileList.length, index, () => {
+                                const mergeFormData = new FormData();
+                                mergeFormData.append("cover", cover);
+                                mergeFormData.append("contentType", contentType);
+                                mergeFormData.append("isPublic", isPublic);
+                                mergeFormData.append('file', file);
+                                mergeFormData.append('pathname', pathname);
+                                mergeFormData.append('totalMd5', totalMd5);
+                                mergeFormData.append('totalSize', totalSize);
+                                mergeFormData.append('bucketName', bucketName);
+                                this.$http.post('/upload/mergeFiles?wait=true', mergeFormData)
+                                    .then(response => {
+                                        console.log(pathname + "上传完成！");
+                                        this.updateUploadProgress(true, fileName, this.fileList.length, index + 1, 1, 1, 1, 1);
+                                        index++;
+                                        this.uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback);
+                                    });
+                            });
+                        } else {
+                            console.log(pathname + "上传完成！");
+                            //秒传
+                            this.updateUploadProgress(true, fileName, this.fileList.length, index + 1, 1, 1, 1, 1);
+                            index++;
+                            this.uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback);
+                        }
+                    });
+                }, (checks, checkIndex) => {
+                    this.updateUploadProgress(false, fileName, fileList.length, index + 1, checks, checkIndex, 1, 0);
+                });
+            },
             handleOk(e) {
                 this.form.validateFieldsAndScroll((err, values) => {
                     if (!err) {
@@ -770,57 +953,18 @@
                         const cover = values.cover === undefined ? false : values.cover;
                         const isPublic = values.isPublic === undefined ? false : values.isPublic;
                         const contentType = values.contentType === undefined ? '' : values.contentType;
-                        const formData = new FormData();
-                        formData.append("cover", cover);
-                        formData.append("contentType", contentType);
-                        formData.append("isPublic", isPublic);
-                        this.fileList.forEach(file => {
-                            formData.append('files', file);
+                        this.uploadProgress = {
+                            files: this.fileList.length,
+                            fileIndex: 1,
+                            current: '',
+                            uploadPercent: 0
+                        }
+                        this.uploadFile(this.fileList, 0, bucketName, pathnames, cover, isPublic, contentType, () => {
+                            this.uploading = false;
+                            this.$message.success("上传成功!");
+                            this.visible = false;
+                            this.reload();
                         });
-                        let uploadId = "";
-                        pathnames.forEach(pathname => {
-                            uploadId += pathname;
-                            formData.append("pathnames", pathname);
-                        });
-                        const params = {
-                            uploadId: `${bucketName}-${uploadId}`,
-                            bucketName: bucketName,
-                            taskCount: pathnames.length
-                        };
-                        this.$http.get("/upload/progress/reset", {
-                            params: params,
-                        }).then(value => {
-                            let t = setInterval(() => {
-                                this.$http.get("/upload/progress", {
-                                    params: params
-                                }).then(res => {
-                                    this.uploadPercent = parseFloat((res.data.result * 100).toFixed(0));
-                                    if (this.uploadPercent >= 100) {
-                                        this.uploadPercent = 99;
-                                    }
-                                });
-                            }, 500);
-                            console.log("开始上传")
-                            this.uploading = true;
-                            this.$http.post("/upload/" + bucketName, formData, {
-                                params: {
-                                    uploadId: params.uploadId
-                                }
-                            }).then(value => {
-                                console.log("上传成功");
-                                this.uploading = false;
-                                clearInterval(t);
-                                this.uploadPercent = 100;
-                                this.$message.success("上传成功!");
-                                this.visible = false;
-                                this.reload();
-                            }, reason => {
-                                console.log("上传失败");
-                                this.uploading = false;
-                                clearInterval(t);
-                            });
-                        });
-
                     }
                 });
             },

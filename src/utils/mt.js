@@ -54,6 +54,18 @@ let deepClone = function (data) {
     return obj;
 }
 
+let contains = function(arr,item){
+    if(!arr){
+        return false;
+    }
+    for(let i=0;i<arr.length;i++){
+        if(arr[i] === item){
+            return true;
+        }
+    }
+    return false;
+}
+
 module.exports = {
-    transformFormData, deepClone, deepCopy
+    transformFormData, deepClone, deepCopy,contains
 }
