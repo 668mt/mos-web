@@ -16,7 +16,7 @@
 		</a-row>
 		<div style="margin:10px;">
 			<!-- 返回 -->
-			<a class="dir-nav" @click="back(lastDir)" :disabled="!lastDir">
+			<a class="dir-nav" @click="onBack(lastDir)" :disabled="!lastDir">
 				<a-icon type="rollback"/>
 			</a>
 			<!-- 父路径 -->
@@ -96,9 +96,9 @@
 					 :destroyOnClose="true"
 			>
 				<a-form :form="form">
-					<span v-if="uploading">
-						<span>（{{uploadProgress.fileIndex}}/{{uploadProgress.files}}）[{{uploadProgress.current}}] 上传中...</span>
-						<a-progress :percent="uploadProgress.uploadPercent"/>
+					<span v-if="uploading || uploadProgress.errorMsg">
+						<span>（{{uploadProgress.fileIndex}}/{{uploadProgress.files}}）[{{uploadProgress.current}}] {{uploadProgress.errorMsg ? '上传失败：'+uploadProgress.errorMsg:'上传中...'}}</span>
+						<a-progress :percent="uploadProgress.uploadPercent" :status="uploadProgress.errorMsg ? 'exception' : 'active'"/>
 					</span>
 					<a-form-item v-bind="formItemLayout" label="桶">
 						<a-select v-decorator="['bucketName',{rules: [{required: true,message: '请选择桶',}],},]">
@@ -220,9 +220,9 @@
 	</a-card>
 </template>
 <script>
-    import SparkMD5 from "spark-md5"
     import {Icon} from 'ant-design-vue';
     import $ from 'jquery'
+	import resource from './resource'
 
     const columns = [
         {title: '文件名', dataIndex: 'name', width: 300, scopedSlots: {customRender: 'name'}, sorter: true},
@@ -398,11 +398,12 @@
             },
         },
         destroyed() {
-            window.removeEventListener("popstate", this.popHandler);
+            window.removeEventListener("popstate", resource.popHandler);
         },
         mounted() {
-            window.addEventListener("popstate", this.popHandler, false);
-            this.fetchBucket();
+            resource.setThat(this);
+            window.addEventListener("popstate", resource.popHandler, false);
+            resource.fetchBucket();
             const queryParams = this.$route.query;
             if (queryParams) {
                 if (queryParams.n) {
@@ -470,6 +471,9 @@
             }
         },
         methods: {
+            showImages(url, record) {
+                resource.showImages(url, record);
+			},
             getResourceClass(record) {
                 let contains = false;
                 for (let path of this.historyClicks) {
@@ -483,27 +487,8 @@
             onRecentClick(record) {
                 this.historyClicks.push(record.path);
             },
-            popHandler(e) {
-                const params = e.state;
-                if (params && params.path) {
-                    this.changeCurrentPath({
-                        path: params.path,
-                        urlEncodePath: params.urlEncodePath
-                    }, params, true)
-                }
-            },
             inited(viewer) {
                 this.$viewer = viewer
-            },
-            showImages(url, record) {
-                if (record) {
-                    this.onRecentClick(record);
-                }
-                for (let i = 0; i < this.images.length; i++) {
-                    if (this.images[i].indexOf(url) !== -1) {
-                        this.$viewer.view(i);
-                    }
-                }
             },
             onSearch() {
                 this.fetch({
@@ -532,7 +517,7 @@
                     this.openIds = response.data.result;
                     this.addrForm.openId = this.openIds[0].openId;
                     if (record.isPublic) {
-                        this.genAddr();
+                        resource.genAddr();
                     }
                 });
             },
@@ -542,47 +527,8 @@
                 }
                 this.addrForm.signUrl = '';
             },
-            genAddr() {
-                if (!this.addrForm.openId) {
-                    this.$message.warn("请先创建一个秘钥!")
-                    return;
-                }
-                this.addrForm.signUrl = '';
-                let body = {...this.addrForm};
-                let x = 1;
-                let expireNumber = parseInt(this.addrForm.expireNumber);
-                if (expireNumber < 1) {
-                    this.$message.warn("时间不能小于1");
-                    return;
-                }
-                switch (this.addrForm.expireUnit) {
-                    case "minute":
-                        x = 60;
-                        break
-                    case "hour":
-                        x = 3600;
-                        break;
-                    case "day":
-                        x = 3600 * 24;
-                        break;
-                    case "month":
-                        x = 3600 * 24 * 30;
-                        break;
-                    case "year":
-                        x = 3600 * 24 * 30 * 365;
-                        break;
-                    case "ever":
-                        x = -1;
-                        expireNumber = 1;
-                        break;
-                }
-                body.expireSeconds = x * expireNumber;
-                this.$http.post('/member/access/sign', body).then(response => {
-                    this.addrForm.signUrl = response.data.result;
-                });
-            },
             addrHandleOk() {
-                this.genAddr();
+                resource.genAddr();
             },
             onSelectChange(selectedRowKeys, selectedRows) {
                 this.selectedRowKeys = selectedRowKeys;
@@ -597,6 +543,7 @@
                     bucketName: this.currentBucket,
                     pathname: this.currentDir.path
                 };
+                resource.initUploadProgress();
                 this.$nextTick().then(value => {
                     this.form.setFieldsValue({
                         bucketName: this.currentBucket,
@@ -609,37 +556,8 @@
                 this.form = this.$form.createForm(this, {name: 'register'});
                 this.visible = true;
             },
-            back(dir) {
+            onBack(dir) {
                 history.back();
-            },
-            getHistoryParams(extendParams) {
-                extendParams = extendParams || {};
-                const params = {
-                    pageNum: this.pagination.current,
-                    pageSize: this.pagination.pageSize,
-                    path: this.currentDir.path,
-                    urlEncodePath: this.currentDir.urlEncodePath,
-                    keyWord: this.keyWord,
-                    sortField: this.sortField,
-                    sortOrder: this.sortOrder,
-                    currentBucket: this.currentBucket
-                }
-                $.extend(params, extendParams);
-                let url = "/resource?";
-                for (let key in params) {
-                    const alias = this.queryAlias[key];
-                    const value = params[key];
-                    if (value && alias) {
-                        url += alias + "=" + encodeURIComponent(value) + "&";
-                    }
-                }
-                url = url.substring(0, url.length - 1);
-                params.url = url;
-                return params;
-            },
-            addHistory(extendParams) {
-                let params = this.getHistoryParams(extendParams);
-                history.pushState(params, null, params.url);
             },
             changeCurrentPath(dir, extendParams, ignoreHistory) {
                 this.onRecentClick(dir);
@@ -728,12 +646,6 @@
                 }
                 this.reload();
             },
-            fetchBucket() {
-                this.$http.get("/member/bucket/list").then(response => {
-                    this.buckets = response.data.result;
-                    this.currentBucket = this.buckets[0].bucketName;
-                })
-            },
             reload() {
                 let pagination = this.pagination;
                 this.fetch({
@@ -775,174 +687,11 @@
                     }
                     this.pagination = pagination;
                     if (!params.ignoreHistory) {
-                        this.addHistory();
+                        resource.addHistory();
                     }
                     if (callback) {
                         callback();
                     }
-                });
-            },
-            md5File(file, callback, chunkCallback) {
-                var blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice,
-                    chunkSize = 2097152,                             // Read in chunks of 2MB
-                    chunks = Math.ceil(file.size / chunkSize),
-                    currentChunk = 0,
-                    spark = new SparkMD5.ArrayBuffer(),
-                    fileReader = new FileReader();
-
-                fileReader.onload = function (e) {
-                    spark.append(e.target.result);
-                    currentChunk++;
-                    if (chunkCallback != null) {
-                        chunkCallback(chunks, currentChunk);
-                    }
-                    if (currentChunk < chunks) {
-                        loadNext();
-                    } else {
-                        callback(spark.end());
-                    }
-                };
-
-                fileReader.onerror = function () {
-                    console.warn('oops, something went wrong.');
-                };
-
-                function loadNext() {
-                    var start = currentChunk * chunkSize,
-                        end = ((start + chunkSize) >= file.size) ? file.size : start + chunkSize;
-
-                    fileReader.readAsArrayBuffer(blobSlice.call(file, start, end));
-                }
-
-                loadNext();
-            },
-            splitFile(file, minPartSize = 2 * 1024 * 1024, maxPartSize = 10 * 1024 * 1024, expectChunks = 100) {
-                let totalSize = file.size;
-                let partSize = Math.ceil(totalSize / expectChunks);
-                if (partSize < minPartSize) {
-                    partSize = minPartSize;
-                } else if (partSize > maxPartSize) {
-                    partSize = maxPartSize;
-                }
-                let chunks = Math.ceil(totalSize / partSize);
-                let uploadParts = [];
-                for (let i = 0; i < chunks; i++) {
-                    let uploadPart;
-                    if (i === (chunks - 1)) {
-                        uploadPart = file.slice(i * partSize, totalSize);
-                    } else {
-                        uploadPart = file.slice(i * partSize, (i + 1) * partSize);
-                    }
-                    uploadParts.push(uploadPart);
-                }
-                return {
-                    totalSize, chunks, partSize, uploadParts
-                };
-            },
-            doUploadPart(waitingUpload, index, bucketName, cover, contentType, isPublic, pathname, totalMd5, totalSize, chunks, files, fileIndex, callback) {
-                if (index >= waitingUpload.length) {
-                    callback();
-                    return;
-                }
-                let uploadPart = waitingUpload[index].uploadPart;
-                let chunkIndex = waitingUpload[index].chunkIndex;
-                this.md5File(uploadPart, chunkMd5 => {
-                    const formData = new FormData();
-                    formData.append("cover", cover);
-                    formData.append("contentType", contentType);
-                    formData.append("isPublic", isPublic);
-                    formData.append('file', uploadPart);
-                    formData.append('pathname', pathname);
-                    formData.append('totalMd5', totalMd5);
-                    formData.append('totalSize', totalSize);
-                    formData.append('chunkMd5', chunkMd5);
-                    formData.append('chunkSize', uploadPart.size);
-                    formData.append('chunkIndex', chunkIndex);
-                    let fileName = this.getFileName(pathname);
-                    this.$http.post('/upload/' + bucketName, formData).then(response => {
-                        console.log('分片' + chunkIndex + '上传结果:' + response.data.status);
-                        this.updateUploadProgress(false, fileName, files, fileIndex + 1, 1, 1, chunks, chunkIndex + 1);
-                        index++;
-                        this.doUploadPart(waitingUpload, index, bucketName, cover, contentType, isPublic, pathname, totalMd5, totalSize, chunks, files, fileIndex, callback);
-                    })
-                });
-            },
-            updateUploadProgress(done, current, files, fileIndex, checks, checkIndex, chunks, chunkIndex) {
-                let uploadPercent = done ? 100 : 5 * checkIndex / checks + chunkIndex / chunks * 94;
-                uploadPercent = Math.floor(uploadPercent);
-                this.uploadProgress = {
-                    current, files, fileIndex, uploadPercent
-                };
-            },
-            getFileName(pathname) {
-                let lastIndexOf = pathname.lastIndexOf('/');
-                if (lastIndexOf !== -1) {
-                    return pathname.substring(lastIndexOf + 1)
-                } else {
-                    return pathname;
-                }
-            },
-            uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback) {
-                if (index >= fileList.length) {
-                    callback();
-                    return;
-                }
-                let file = fileList[index];
-                const pathname = pathnames[index];
-                let splitResult = this.splitFile(file);
-                let chunks = splitResult.chunks;
-                const totalSize = splitResult.totalSize;
-                const uploadParts = splitResult.uploadParts;
-                this.uploading = true;
-                const fileName = this.getFileName(pathname);
-                this.uploadProgress.current = fileName;
-                console.log(splitResult)
-                this.md5File(file, totalMd5 => {
-                    let params = {
-                        pathname, chunks, totalMd5, totalSize, contentType, isPublic, cover
-                    };
-                    this.$http.post(`/upload/${bucketName}/init`, this.$mt.transformFormData(params)).then(response => {
-                        let result = response.data.result;
-                        let fileExists = result.fileExists;
-                        let existedChunkIndexs = result.existedChunkIndexs;
-                        if (!fileExists) {
-                            const waitingUpload = [];
-                            uploadParts.forEach((uploadPart, chunkIndex) => {
-                                if (this.$mt.contains(existedChunkIndexs, chunkIndex)) {
-                                    return;
-                                }
-                                waitingUpload.push({
-                                    uploadPart, chunkIndex
-                                });
-                            });
-                            this.doUploadPart(waitingUpload, 0, bucketName, cover, contentType, isPublic, pathname, totalMd5, totalSize, chunks, this.fileList.length, index, () => {
-                                const mergeFormData = new FormData();
-                                mergeFormData.append("cover", cover);
-                                mergeFormData.append("contentType", contentType);
-                                mergeFormData.append("isPublic", isPublic);
-                                mergeFormData.append('file', file);
-                                mergeFormData.append('pathname', pathname);
-                                mergeFormData.append('totalMd5', totalMd5);
-                                mergeFormData.append('totalSize', totalSize);
-                                mergeFormData.append('bucketName', bucketName);
-                                this.$http.post('/upload/mergeFiles?wait=true', mergeFormData)
-                                    .then(response => {
-                                        console.log(pathname + "上传完成！");
-                                        this.updateUploadProgress(true, fileName, this.fileList.length, index + 1, 1, 1, 1, 1);
-                                        index++;
-                                        this.uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback);
-                                    });
-                            });
-                        } else {
-                            console.log(pathname + "上传完成！");
-                            //秒传
-                            this.updateUploadProgress(true, fileName, this.fileList.length, index + 1, 1, 1, 1, 1);
-                            index++;
-                            this.uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback);
-                        }
-                    });
-                }, (checks, checkIndex) => {
-                    this.updateUploadProgress(false, fileName, fileList.length, index + 1, checks, checkIndex, 1, 0);
                 });
             },
             handleOk(e) {
@@ -953,13 +702,8 @@
                         const cover = values.cover === undefined ? false : values.cover;
                         const isPublic = values.isPublic === undefined ? false : values.isPublic;
                         const contentType = values.contentType === undefined ? '' : values.contentType;
-                        this.uploadProgress = {
-                            files: this.fileList.length,
-                            fileIndex: 1,
-                            current: '',
-                            uploadPercent: 0
-                        }
-                        this.uploadFile(this.fileList, 0, bucketName, pathnames, cover, isPublic, contentType, () => {
+                        resource.initUploadProgress();
+                        resource.uploadFile(this.fileList, 0, bucketName, pathnames, cover, isPublic, contentType, () => {
                             this.uploading = false;
                             this.$message.success("上传成功!");
                             this.visible = false;

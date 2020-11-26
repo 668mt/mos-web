@@ -5,7 +5,7 @@ import MenuView from "../layouts/MenuView";
 import PageView from "../layouts/PageView";
 import User from "../pages/user/User";
 import Bucket from "../pages/bucket/Bucket";
-import Resource from "../pages/resource/Resource";
+import Resource from "../pages/resource/Resource.vue";
 
 Vue.use(Router);
 
