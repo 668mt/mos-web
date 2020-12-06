@@ -20,7 +20,7 @@
 					<a @click="onEdit(record)">编辑</a>
 					<a-divider type="vertical"/>
 					<a-popconfirm
-							title="是否删除?"
+							title="是否解锁?"
 							ok-text="是"
 							cancel-text="否"
 							@confirm="unlock(record)"

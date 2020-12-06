@@ -15,6 +15,7 @@
         </a-tab-pane>
       </a-tabs>
       <div class="menu-view-content">
+<!--      <a-button style="float: right;margin-top:50px;">刷新</a-button>-->
         <page-toggle-transition :animate="animate.name" :direction="animate.direction">
           <keep-alive v-if="multiPage">
             <router-view />

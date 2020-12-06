@@ -19,6 +19,9 @@
 			<a class="dir-nav" @click="onBack(lastDir)" :disabled="!lastDir">
 				<a-icon type="rollback"/>
 			</a>
+			<a style="margin-left: 10px;" @click="reload">
+				<a-icon type="sync"/>
+			</a>
 			<!-- 父路径 -->
 			<span v-if="parentDirs.length > 0">
 				<a style="margin-left:10px;" class="dir-nav" v-for="dir in parentDirs" :key="dir.path"
@@ -33,6 +36,7 @@
 				 :row-selection="rowSelection"
 				 :rowKey="(row) => {return row.id}"
 				 :scroll="{ x: 1500 }"
+				 :loading="tableLoading"
 				 @change="handleTableChange">
 			<span slot="name" slot-scope="text,record">
 				<span v-if="record.isDir">
@@ -78,9 +82,9 @@
 				>
 					<a style="color:red;">删除</a>
 				</a-popconfirm>
+				<a-divider type="vertical"/>
+				<a @click="record.isDir ? onEditDir(record) : onEditResource(record)">编辑</a>
 				<span v-if="!record.isDir">
-					<a-divider type="vertical"/>
-					<a @click="onEditResource(record)">编辑</a>
 					<a-divider type="vertical"/>
 					<a @click="openGenAddr(record)">访问链</a>
 					<a-divider type="vertical"/>
@@ -98,7 +102,8 @@
 				<a-form :form="form">
 					<span v-if="uploading || uploadProgress.errorMsg">
 						<span>（{{uploadProgress.fileIndex}}/{{uploadProgress.files}}）[{{uploadProgress.current}}] {{uploadProgress.errorMsg ? '上传失败：'+uploadProgress.errorMsg:'上传中...'}}</span>
-						<a-progress :percent="uploadProgress.uploadPercent" :status="uploadProgress.errorMsg ? 'exception' : 'active'"/>
+						<a-progress :percent="uploadProgress.uploadPercent"
+									:status="uploadProgress.errorMsg ? 'exception' : 'active'"/>
 					</span>
 					<a-form-item v-bind="formItemLayout" label="桶">
 						<a-select v-decorator="['bucketName',{rules: [{required: true,message: '请选择桶',}],},]">
@@ -213,6 +218,18 @@
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
+			<a-modal v-model="editDirVisible" title="路径详情" :confirmLoading="editDirSaving" @ok="onEditDirOk"
+					 okText="保存">
+				<a-form-model
+						ref="editDirForm"
+						:label-col="{span:6}"
+						:wrapper-col="{span:12}"
+						:model="editDirForm">
+					<a-form-model-item label="资源名" prop="path">
+						<a-input v-model="editDirForm.path" @pressEnter="onEditDirOk"/>
+					</a-form-model-item>
+				</a-form-model>
+			</a-modal>
 			<viewer :trigger="images" class="viewer" ref="viewer" @inited="inited">
 				<img style="display: none" v-for="src in images" :src="src" :key="src">
 			</viewer>
@@ -222,7 +239,7 @@
 <script>
     import {Icon} from 'ant-design-vue';
     import $ from 'jquery'
-	import resource from './resource'
+    import resource from './resource'
 
     const columns = [
         {title: '文件名', dataIndex: 'name', width: 300, scopedSlots: {customRender: 'name'}, sorter: true},
@@ -240,6 +257,11 @@
     export default {
         data() {
             return {
+                editDirVisible: false,
+                editDirForm: {
+                    path: ''
+                },
+                editDirSaving: false,
                 locations: {
                     lastLocation: [],
                     current: {}
@@ -358,7 +380,8 @@
                     currentBucket: 'b'
                 },
                 historyClicks: [],
-                refreshed: true
+                refreshed: true,
+                tableLoading: false
             };
         },
         computed: {
@@ -471,9 +494,27 @@
             }
         },
         methods: {
+            onEditDir(record) {
+                this.editDirVisible = true;
+                this.editDirForm = {
+                    path: record.path,
+                    id: record.id
+                }
+            },
+            onEditDirOk() {
+                this.editDirSaving = true;
+                this.$http.put(`/member/dir/${this.currentBucket}/${this.editDirForm.id}`, this.editDirForm).then(response => {
+                    this.$message.success("修改成功");
+                    this.editDirSaving = false;
+                    this.editDirVisible = false;
+                    this.reload();
+                }, reason => {
+                    this.editDirSaving = false;
+                });
+            },
             showImages(url, record) {
                 resource.showImages(url, record);
-			},
+            },
             getResourceClass(record) {
                 let contains = false;
                 for (let path of this.historyClicks) {
@@ -654,7 +695,8 @@
                     path: this.currentDir.urlEncodePath,
                     keyWord: this.keyWord,
                     sortField: this.sortField,
-                    sortOrder: this.sortOrder
+                    sortOrder: this.sortOrder,
+                    ignoreHistory: true
                 });
             },
             fetch(params = {
@@ -665,9 +707,11 @@
                 sortField: null,
                 sortOrder: null,
             }, callback) {
+                this.tableLoading = true;
                 this.$http.get("/member/resource/" + this.currentBucket + params.path, {
                     params: params
                 }).then(value => {
+                    this.tableLoading = false;
                     const result = value.data.result;
                     this.currentDir = !result.currentDir ? {
                         path: '/',
@@ -692,6 +736,8 @@
                     if (callback) {
                         callback();
                     }
+                }, reason => {
+                    this.tableLoading = false;
                 });
             },
             handleOk(e) {
