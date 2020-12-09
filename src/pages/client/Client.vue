@@ -27,21 +27,21 @@
 			</span>
 			<span slot="action" slot-scope="text,record">
 				<a-popconfirm
-						title="是否剔除?"
-						ok-text="是"
-						cancel-text="否"
-						@confirm="onKick(record)"
-				>
-					<a>剔除</a>
-				</a-popconfirm>
-				<a-divider type="vertical"/>
-				<a-popconfirm
 						title="是否恢复?"
 						ok-text="是"
 						cancel-text="否"
 						@confirm="onRecover(record)"
 				>
 					<a>恢复</a>
+				</a-popconfirm>
+				<a-divider type="vertical"/>
+				<a-popconfirm
+						title="是否剔除?"
+						ok-text="是"
+						cancel-text="否"
+						@confirm="onKick(record)"
+				>
+					<a style="color:red;">剔除</a>
 				</a-popconfirm>
 			</span>
 		</a-table>

@@ -95,19 +95,54 @@
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
-			<a-modal v-model="grantVisible" title="授权" @ok="grantOk" width="700px">
+			<a-modal v-model="grantVisible" title="授权" @ok="grantOk" width="1200px">
+				<!--						show-search-->
 				<a-transfer
 						:data-source="userData"
-						show-search
 						@change="handleGrantChange"
 						:list-style="{width: '250px',height: '300px',}"
 						:operations="['添加授权', '删除授权']"
 						:target-keys="grantUserKeys"
-						:render="item => `${item.username}`"
 				>
-					<span slot="notFoundContent">
-					  没数据
-					</span>
+					<template
+							slot="children"
+							slot-scope="{props: { direction, filteredItems, selectedKeys, disabled: listDisabled },on: { itemSelectAll, itemSelect },}"
+					>
+						<a-table
+								:row-selection="getRowSelection({ disabled: listDisabled, selectedKeys, itemSelectAll, itemSelect })"
+								:columns="grantColumns"
+								:data-source="filteredItems"
+								:pagination="false"
+								size="small"
+								:style="{ pointerEvents: listDisabled ? 'none' : null }"
+								:custom-row="
+									({ key, disabled: itemDisabled }) => ({
+									  on: {
+										click: () => {
+										  itemSelect(key, !selectedKeys.includes(key));
+										},
+									  },
+									})
+								  "
+						>
+							<template slot="perms" slot-scope="text,record">
+								<a-select
+										mode="multiple"
+										:default-value="text ? text : []"
+										style="width: 100%"
+										placeholder="请选择权限"
+										@change="handlePermChange($event,record)"
+								>
+									<a-select-option v-for="item in allPerms" :key="item">
+										{{item}}
+									</a-select-option>
+								</a-select>
+							</template>
+						</a-table>
+					</template>
+					<!--					<span slot="notFoundContent">-->
+					<!--					  没数据-->
+					<!--					</span>-->
 				</a-transfer>
 			</a-modal>
 		</div>
@@ -154,7 +189,7 @@
         }, {
             title: '用途',
             dataIndex: 'useInfo'
-        },{
+        }, {
             title: '私钥',
             dataIndex: 'secretKey',
             scopedSlots: {customRender: 'secretKey'},
@@ -170,12 +205,20 @@
             scopedSlots: {customRender: 'action'},
         }
     ];
+    const grantColumns = [
+        {title: '姓名', dataIndex: 'name', width: 140},
+        {title: '账号', dataIndex: 'username', width: 140},
+        {title: '权限', dataIndex: 'perms', width: 300, scopedSlots: {customRender: 'perms'}},
+    ];
+    import difference from 'lodash/difference';
+
     export default {
         data() {
             return {
                 data: [],
                 columns,
                 innerColumns,
+                grantColumns,
                 innerData: [],
                 innerDatas: [],
                 expandedRowKeys: [],
@@ -187,7 +230,7 @@
                     id: null,
                     bucketName: '',
                     defaultIsPublic: false,
-                    dataFragmentsAmount:1
+                    dataFragmentsAmount: 1
                 },
                 accessForm: {
                     openId: null,
@@ -206,12 +249,35 @@
                 grantUserKeys: [],
                 targetKeys: [],
                 currentGrantBucketId: null,
+                allPerms: [],
             };
         },
         mounted() {
             this.fetch();
+            this.$http.get('/member/bucket/grant/perms/all').then(value => {
+                this.allPerms = value.data.result;
+            })
         },
         methods: {
+            handlePermChange(e, record) {
+                record.perms = e;
+            },
+            getRowSelection({disabled, selectedKeys, itemSelectAll, itemSelect}) {
+                return {
+                    getCheckboxProps: item => ({props: {disabled: disabled || item.disabled}}),
+                    onSelectAll(selected, selectedRows) {
+                        const treeSelectedKeys = selectedRows
+                            .filter(item => !item.disabled)
+                            .map(({key}) => key);
+                        const diffKeys = selected ? difference(treeSelectedKeys, selectedKeys) : difference(selectedKeys, treeSelectedKeys);
+                        itemSelectAll(diffKeys, selected);
+                    },
+                    onSelect({key}, selected) {
+                        itemSelect(key, selected);
+                    },
+                    selectedRowKeys: selectedKeys,
+                };
+            },
             onGenerate(record) {
                 this.accessForm = {
                     openId: null,
@@ -264,7 +330,7 @@
                     id: null,
                     bucketName: '',
                     defaultIsPublic: false,
-                    dataFragmentsAmount:1
+                    dataFragmentsAmount: 1
                 };
                 this.showModal();
             },
@@ -319,6 +385,8 @@
             },
             onGrant(record) {
                 this.grantVisible = true;
+                this.userData = [];
+                this.grantUserKeys = [];
                 this.$http.get('/member/bucket/grant/list', {
                     params: {
                         bucketId: record.id
@@ -332,11 +400,28 @@
             handleGrantChange(targetKeys, direction, moveKeys) {
                 this.grantUserKeys = targetKeys;
             },
+            hasGrant(user) {
+                for (let key of this.grantUserKeys) {
+                    if (key === user.key) {
+                        return true;
+                    }
+                }
+                return false;
+            },
             grantOk() {
-                this.$http.post('/member/bucket/grant', {
+                let grants = this.userData.filter(value => {
+                    return this.hasGrant(value);
+                }).map(value => {
+                    return {
+                        userId: value.id,
+                        perms: value.perms
+                    };
+                });
+                let body = {
                     bucketId: this.currentGrantBucketId,
-                    userIds: this.grantUserKeys.map(value => parseFloat(value))
-                }).then(response => {
+                    grants: grants
+                }
+                this.$http.post('/member/bucket/grant', body).then(response => {
                     this.$message.success("授权成功");
                     this.grantVisible = false;
                 });

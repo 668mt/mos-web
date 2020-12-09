@@ -2,8 +2,14 @@
 	<a-card>
 		<a-row style="margin-bottom:10px;">
 			<div class="tool-btns">
-				<a-button type="primary" @click="onAdd">上传</a-button>
-				<a-button type="primary" @click="onBatchDelete" :disabled="this.selectedRowKeys.length === 0">批量删除
+				<a-button type="primary" @click="onAdd" :disabled="!this.canInsert()">上传
+				</a-button>
+				<a-button type="primary" @click="onCreateDir" :disabled="!this.canInsert()">
+					创建文件夹
+				</a-button>
+				<a-button type="primary" @click="onBatchDelete"
+						  :disabled="!this.canDelete() || this.selectedRowKeys.length === 0">
+					批量删除
 				</a-button>
 				<a-input-search placeholder="输入搜索内容" style="margin-left:15px;width: 200px" v-model="keyWord"
 								@search="onSearch()" @change="pressEnter()"/>
@@ -74,18 +80,22 @@
 				</span>
 			</span>
 			<span slot="action" slot-scope="text,record">
-				<a-popconfirm
-						title="是否删除?"
-						ok-text="是"
-						cancel-text="否"
-						@confirm="onDelete(record,record.isDir ? 'delDir' : 'delFile')"
-				>
-					<a style="color:red;">删除</a>
-				</a-popconfirm>
-				<a-divider type="vertical"/>
-				<a @click="record.isDir ? onEditDir(record) : onEditResource(record)">编辑</a>
-				<span v-if="!record.isDir">
+				<span :style="canDelete() ? '' : 'display:none'">
+					<a-popconfirm
+							title="是否删除?"
+							ok-text="是"
+							cancel-text="否"
+							@confirm="onDelete(record,record.isDir ? 'delDir' : 'delFile')"
+					>
+						<a style="color:red;">删除</a>
+					</a-popconfirm>
 					<a-divider type="vertical"/>
+				</span>
+				<span :style="canUpdate() ? '' : 'display:none'">
+					<a @click="record.isDir ? onEditDir(record) : onEditResource(record)">编辑</a>
+					<a-divider v-if="!record.isDir" type="vertical"/>
+				</span>
+				<span v-if="!record.isDir">
 					<a @click="openGenAddr(record)">访问链</a>
 					<a-divider type="vertical"/>
 					<a :href="`/mos/${currentBucket}${record.urlEncodePath}?download=true`">下载</a>
@@ -128,12 +138,19 @@
 								@search="onContentTypeSearch"
 						/>
 					</a-form-item>
-					<a-form-item v-bind="formItemLayout" label="文件">
+					<a-form-item v-bind="formItemLayout" label="文件/文件夹">
+						<a-radio-group v-model="uploadDirectory">
+							<a-radio :value="false">文件</a-radio>
+							<a-radio :value="true">文件夹</a-radio>
+						</a-radio-group>
+					</a-form-item>
+					<a-form-item v-bind="formItemLayout" label="选择">
 						<a-upload :file-list="fileList" :multiple="true" :remove="handleRemove"
+								  :directory="uploadDirectory"
 								  :before-upload="beforeUpload">
 							<a-button>
 								<a-icon type="upload"/>
-								选择
+								选择{{uploadDirectory ? '文件夹' : '文件'}}
 							</a-button>
 						</a-upload>
 					</a-form-item>
@@ -226,7 +243,7 @@
 						:wrapper-col="{span:12}"
 						:model="editDirForm">
 					<a-form-model-item label="资源名" prop="path">
-						<a-input v-model="editDirForm.path" @pressEnter="onEditDirOk"/>
+						<a-input ref="editDirPath" v-model="editDirForm.path" @pressEnter="onEditDirOk"/>
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
@@ -257,6 +274,7 @@
     export default {
         data() {
             return {
+                uploadDirectory: false,
                 editDirVisible: false,
                 editDirForm: {
                     path: ''
@@ -271,8 +289,8 @@
                     if (value === '') {
                         callback();
                     }
-                    if (/[:*?"<>|,]/.test(value)) {
-                        callback(new Error('资源名不能包含: * ? " < > | ,'));
+                    if (/[\\[:\]*?"<>|,]/.test(value)) {
+                        callback(new Error('资源名不能包含: * ? " < > | [ ],'));
                     }
                     if (this.cover) {
                         callback();
@@ -463,6 +481,7 @@
             },
             currentBucket() {
                 let pagination = this.pagination;
+                this.data = [];
                 if (!this.refreshed) {
                     this.fetch({
                         pageNum: 1,
@@ -494,23 +513,63 @@
             }
         },
         methods: {
+            canInsert() {
+                return this.hasPerm(this.currentBucket, 'INSERT');
+            },
+            canSelect() {
+                return this.hasPerm(this.currentBucket, 'SELECT');
+            },
+            canUpdate() {
+                return this.hasPerm(this.currentBucket, 'UPDATE');
+            },
+            canDelete() {
+                return this.hasPerm(this.currentBucket, 'DELETE');
+            },
+            onCreateDir() {
+                this.editDirVisible = true;
+                let path = this.currentDir.path;
+                if (path !== '/') {
+                    path = path + '/';
+                }
+                this.editDirForm = {
+                    path: path,
+                    id: null
+                }
+                this.$nextTick().then(value => {
+                    this.$refs.editDirPath.focus();
+                });
+            },
             onEditDir(record) {
                 this.editDirVisible = true;
                 this.editDirForm = {
                     path: record.path,
                     id: record.id
                 }
+                this.$nextTick().then(value => {
+                    this.$refs.editDirPath.focus();
+                });
             },
             onEditDirOk() {
                 this.editDirSaving = true;
-                this.$http.put(`/member/dir/${this.currentBucket}/${this.editDirForm.id}`, this.editDirForm).then(response => {
-                    this.$message.success("修改成功");
-                    this.editDirSaving = false;
-                    this.editDirVisible = false;
-                    this.reload();
-                }, reason => {
-                    this.editDirSaving = false;
-                });
+                if (this.editDirForm.id) {
+                    this.$http.put(`/member/dir/${this.currentBucket}/${this.editDirForm.id}`, this.editDirForm).then(response => {
+                        this.$message.success("修改成功");
+                        this.editDirSaving = false;
+                        this.editDirVisible = false;
+                        this.reload();
+                    }, reason => {
+                        this.editDirSaving = false;
+                    });
+                } else {
+                    this.$http.post(`/member/dir/${this.currentBucket}`, this.editDirForm).then(response => {
+                        this.$message.success("创建成功");
+                        this.editDirSaving = false;
+                        this.editDirVisible = false;
+                        this.reload();
+                    }, reason => {
+                        this.editDirSaving = false;
+                    });
+                }
             },
             showImages(url, record) {
                 resource.showImages(url, record);
@@ -580,6 +639,7 @@
                     this.$message.warn("您还没有桶，请先去创建一个吧");
                     return;
                 }
+                this.uploadDirectory = false;
                 this.form = {
                     bucketName: this.currentBucket,
                     pathname: this.currentDir.path
@@ -619,6 +679,7 @@
                 this.fetch(params, () => {
                     this.currentDir = dir;
                 });
+                this.selectedRowKeys = [];
             },
             onDelete(record, type) {
                 let params = {};
@@ -685,6 +746,7 @@
                     this.sortField = null;
                     this.sortOrder = null;
                 }
+                this.selectedRowKeys = [];
                 this.reload();
             },
             reload() {
@@ -778,7 +840,13 @@
                 }
                 this.fileList = newFileList;
             },
-            getUploadPathname(name) {
+            getUploadPathname(file) {
+                const webkitRelativePath = file.webkitRelativePath;
+                let name = file.name;
+                if (webkitRelativePath) {
+                    name = webkitRelativePath;
+                }
+
                 let pathname;
                 if (this.currentDir.path === '/') {
                     pathname = this.currentDir.path + name;
@@ -792,14 +860,14 @@
                 this.form.validateFields();
             },
             beforeUpload(file) {
+                const pathname = this.getUploadPathname(file);
                 for (let f of this.fileList) {
-                    if (f.name === file.name) {
+                    const existedPathname = this.getUploadPathname(f);
+                    if (existedPathname === pathname) {
                         return false;
                     }
                 }
                 this.fileList.push(file);
-
-                const pathname = this.getUploadPathname(file.name);
                 let obj = {};
                 let key = `pathnames[${this.fileList.length - 1}]`;
                 obj[key] = pathname;

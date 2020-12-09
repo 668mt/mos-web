@@ -40,23 +40,57 @@ axios.interceptors.response.use(response => {
     }
     return response;
 }, error => {
-    if (error.request.responseURL.endsWith("/signin")) {
-        Vue.prototype.$message.error("登录已过期");
+    const response = error.response;
+    const $message = Vue.prototype.$message;
+    const url = error.request.responseURL;
+    if (url.endsWith("/signin")) {
+        $message.error("登录已过期");
         setTimeout(function () {
             router.replace({
                 name: '登录'
             });
         }, 1500);
+    } else if (response.status === 403) {
+        Vue.prototype.$notification.error({
+            message: '没有权限访问',
+            description: url,
+            style: 'word-wrap: break-word;word-break: break-all;width: 100%;'
+        });
     }
+    return Promise.reject(error);
 });
 
 router.beforeEach((to, from, next) => {
     router.options.routes = router.options.getRoutes();
     next();
 })
+let $perms = [];
+Vue.prototype.hasPerm = function (bucketName, perm) {
+    let ownPerms = $perms[bucketName];
+    if (ownPerms) {
+        for (let p of ownPerms) {
+            if (p === perm.toUpperCase()) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 new Vue({
     router,
     store,
     render: h => h(App),
+    mounted() {
+        this.$http.get('/member/bucket/grant/perms/own').then(response => {
+            let arr = response.data.result;
+            $perms = {};
+            for(let vo of arr){
+                $perms[vo.bucketName] = vo.perms;
+            }
+        });
+    },
+    methods: {
+
+    }
 }).$mount('#app')
