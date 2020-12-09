@@ -111,6 +111,7 @@
                             if (response.data.status === 'ok') {
                                 window.localStorage.setItem("currentUser", JSON.stringify(response.data.result));
                                 this.$message.success(response.data.message);
+                                this.refreshPerm();
                                 this.$router.replace({
                                     path: '/resource'
                                 })

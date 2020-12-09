@@ -18,12 +18,12 @@
 			</span>
 			<span slot="action" slot-scope="text,record">
 				<a @click="onEdit(record)">编辑</a>
+				<a-divider type="vertical"/>
+				<a style="color:red" @click="onGenerate(record)">新增秘钥</a>
 				<span v-if="record.isOwn">
-				<a-divider type="vertical"/>
-				<a @click="onGrant(record)">授权</a>
+					<a-divider type="vertical"/>
+					<a @click="onGrant(record)">授权</a>
 				</span>
-				<a-divider type="vertical"/>
-					<a style="color:red" @click="onGenerate(record)">新增秘钥</a>
 				<a-divider type="vertical"/>
 				<a-popconfirm
 						v-if="record.isOwn"

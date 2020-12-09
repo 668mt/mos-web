@@ -76,21 +76,23 @@ Vue.prototype.hasPerm = function (bucketName, perm) {
     }
     return false;
 }
+Vue.prototype.refreshPerm = function () {
+    this.$http.get('/member/bucket/grant/perms/own').then(response => {
+        let arr = response.data.result;
+        $perms = {};
+        for(let vo of arr){
+            $perms[vo.bucketName] = vo.perms;
+        }
+    });
+}
 
 new Vue({
     router,
     store,
     render: h => h(App),
     mounted() {
-        this.$http.get('/member/bucket/grant/perms/own').then(response => {
-            let arr = response.data.result;
-            $perms = {};
-            for(let vo of arr){
-                $perms[vo.bucketName] = vo.perms;
-            }
-        });
-    },
-    methods: {
-
+        if(this.$route.path !== '/signin'){
+            this.refreshPerm();
+        }
     }
 }).$mount('#app')
