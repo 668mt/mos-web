@@ -97,10 +97,12 @@
 			</a-modal>
 			<a-modal v-model="grantVisible" title="授权" @ok="grantOk" width="1200px">
 				<!--						show-search-->
+<!--						@change2="handleGrantChange"-->
 				<a-transfer
+						show-search
+						:filterOption="filterOption"
 						:data-source="userData"
-						@change="handleGrantChange"
-						:list-style="{width: '250px',height: '300px',}"
+						:list-style="{width: '500px'}"
 						:operations="['添加授权', '删除授权']"
 						:target-keys="grantUserKeys"
 				>
@@ -109,17 +111,21 @@
 							slot-scope="{props: { direction, filteredItems, selectedKeys, disabled: listDisabled },on: { itemSelectAll, itemSelect },}"
 					>
 						<a-table
+								:scroll="{x:450,y:400}"
 								:row-selection="getRowSelection({ disabled: listDisabled, selectedKeys, itemSelectAll, itemSelect })"
 								:columns="grantColumns"
 								:data-source="filteredItems"
 								:pagination="false"
 								size="small"
-								:style="{ pointerEvents: listDisabled ? 'none' : null }"
+								:style="{ pointerEvents: listDisabled ? 'none' : null ,'overflow-x':'auto',}"
 								:custom-row="
 									({ key, disabled: itemDisabled }) => ({
 									  on: {
-										click: () => {
-										  itemSelect(key, !selectedKeys.includes(key));
+										// click: () => {
+										//   itemSelect(key, !selectedKeys.includes(key));
+										// },
+										click: (e) => {
+										  onRowClick(e,key,selectedKeys,itemSelect);
 										},
 									  },
 									})
@@ -150,6 +156,9 @@
 
 </template>
 <script>
+    import $ from "jquery";
+    import difference from 'lodash/difference';
+
     const columns = [
         {
             title: '所有者',
@@ -206,11 +215,10 @@
         }
     ];
     const grantColumns = [
-        {title: '姓名', dataIndex: 'name', width: 140},
-        {title: '账号', dataIndex: 'username', width: 140},
-        {title: '权限', dataIndex: 'perms', width: 300, scopedSlots: {customRender: 'perms'}},
+        {title: '姓名', dataIndex: 'name', width: 80},
+        {title: '账号', dataIndex: 'username', width: 80},
+        {title: '权限', dataIndex: 'perms', width: 200, scopedSlots: {customRender: 'perms'}},
     ];
-    import difference from 'lodash/difference';
 
     export default {
         data() {
@@ -256,9 +264,20 @@
             this.fetch();
             this.$http.get('/member/bucket/grant/perms/all').then(value => {
                 this.allPerms = value.data.result;
-            })
+            });
         },
         methods: {
+            filterOption(inputValue, option){
+            	return (option.name && option.name.indexOf(inputValue) !== -1)
+					|| (option.username && option.username.indexOf(inputValue) !== -1);
+			},
+            onRowClick(e, key, selectedKeys, itemSelect) {
+                let length = $(e.target).parents('.ant-select').length;
+                if (length > 0) {
+                    return;
+                }
+                itemSelect(key, !selectedKeys.includes(key));
+            },
             handlePermChange(e, record) {
                 record.perms = e;
             },
@@ -396,6 +415,9 @@
                     this.grantUserKeys = response.data.result.userKeys;
                 });
                 this.currentGrantBucketId = record.id;
+                this.$nextTick().then(value => {
+                    $(".ant-table-body").css("overflow", "auto");
+                })
             },
             handleGrantChange(targetKeys, direction, moveKeys) {
                 this.grantUserKeys = targetKeys;

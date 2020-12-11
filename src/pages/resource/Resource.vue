@@ -54,23 +54,44 @@
 				</span>
 				<span v-else>
 					<!-- 文件 -->
-					<icon-font class="resource-icon" v-if="record.icon" :type="record.icon" style="font-size:16px;"/>
-					<icon-font class="resource-icon" v-else type="icon-wenjian" style="font-size:16px;"/>
-					
-					<!-- 图片展示 -->
-					<a :id="record.id" v-if="record.image"
-					   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
-					   :class="getResourceClass(record)"
-					>
-						{{record.fileName}}
-					</a>
-					<a :id="record.id" v-else
-					   :class="getResourceClass(record)"
-					   :href="`/mos/${currentBucket}${record.urlEncodePath}`"
-					   @click="onRecentClick(record)"
-					   target="_blank">
-						{{record.fileName}}
-					</a>
+					<a-row>
+						<a-col :span="record.thumbFileHouseId ? 8:2" align="center">
+							<span v-if="record.thumbFileHouseId">
+								<a :id="record.id" v-if="record.image"
+								   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
+								   :class="getResourceClass(record)"
+								>
+									<img style="max-width:100px;max-height:100px;" :title="record.fileName"
+										 :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
+								</a>
+								<a v-else :href="`/mos/${currentBucket}${record.urlEncodePath}`" target="_blank">
+									<img style="max-width:100px;max-height:100px;" :title="record.fileName"
+										 :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
+								</a>
+							</span>
+							<span v-else>
+								<icon-font class="resource-icon" v-if="record.icon" :type="record.icon"
+										   style="font-size:16px;"/>
+								<icon-font class="resource-icon" v-else type="icon-wenjian" style="font-size:16px;"/>
+							</span>
+						</a-col>
+						<a-col span="16">
+							<!-- 图片展示 -->
+							<a :id="record.id" v-if="record.image"
+							   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
+							   :class="getResourceClass(record)"
+							>
+								{{record.fileName}}
+							</a>
+							<a :id="record.id" v-else
+							   :class="getResourceClass(record)"
+							   :href="`/mos/${currentBucket}${record.urlEncodePath}`"
+							   @click="onRecentClick(record)"
+							   target="_blank">
+								{{record.fileName}}
+							</a>
+						</a-col>
+					</a-row>
 				</span>
 			</span>
 			<span slot="isPublic" slot-scope="text,record">
@@ -248,7 +269,7 @@
 				</a-form-model>
 			</a-modal>
 			<viewer :trigger="images" class="viewer" ref="viewer" @inited="inited">
-				<img style="display: none" v-for="src in images" :src="src" :key="src">
+				<img style="display: none" v-for="image in images" :src="image.thumb" :origin="image.origin" :key="image.origin">
 			</viewer>
 		</div>
 	</a-card>
@@ -508,7 +529,10 @@
                 this.images = this.data.filter(record => {
                     return record.image;
                 }).map(record => {
-                    return `/mos/${this.currentBucket}${record.urlEncodePath}`;
+                    return {
+                        origin:`/mos/${this.currentBucket}${record.urlEncodePath}`,
+						thumb:`/mos/${this.currentBucket}${record.urlEncodePath}?thumb=true`
+					};
                 });
             }
         },

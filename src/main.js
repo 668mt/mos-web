@@ -24,7 +24,7 @@ Vue.use(Viewer, {
         transition: true,
         fullscreen: false,
         keyboard: true,
-        url: 'src'
+        url: 'origin'
     }
 });
 

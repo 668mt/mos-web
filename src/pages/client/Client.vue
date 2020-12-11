@@ -53,7 +53,7 @@
         {title: 'ip', dataIndex: 'ip', width: 120},
         {title: '端口', dataIndex: 'port', width: 80},
         {title: '权重', dataIndex: 'weight', width: 80},
-        {title: '可用存储（GB）', dataIndex: 'totalStorageGb', width: 140, scopedSlots: {customRender: 'totalStorageGb'}},
+        {title: '总存储（GB）', dataIndex: 'totalStorageGb', width: 140, scopedSlots: {customRender: 'totalStorageGb'}},
         {title: '已用存储（GB）', dataIndex: 'usedStorageGb', width: 140, scopedSlots: {customRender: 'usedStorageGb'}},
         {title: '使用百分比', dataIndex: 'usedPercent', width: 110, scopedSlots: {customRender: 'usedPercent'}},
         {title: '状态', dataIndex: 'status', width: 80, scopedSlots: {customRender: 'status'}},

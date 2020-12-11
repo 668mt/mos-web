@@ -161,6 +161,7 @@ let methods = {
                             .then(response => {
                                 console.log(pathname + "上传完成！");
                                 this.updateUploadProgress(true, fileName, $that.fileList.length, index + 1, 1, 1, 1, 1);
+                                $that.reload();
                                 index++;
                                 this.uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback);
                             }, reason => {
@@ -237,8 +238,9 @@ let methods = {
         if (record) {
             $that.onRecentClick(record);
         }
+        console.log(url,record,$that.images)
         for (let i = 0; i < $that.images.length; i++) {
-            if ($that.images[i].indexOf(url) !== -1) {
+            if ($that.images[i].origin.indexOf(url) !== -1) {
                 $that.$viewer.view(i);
             }
         }
