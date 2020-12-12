@@ -269,7 +269,8 @@
 				</a-form-model>
 			</a-modal>
 			<viewer :trigger="images" class="viewer" ref="viewer" @inited="inited">
-				<img style="display: none" v-for="image in images" :src="image.thumb" :origin="image.origin" :key="image.origin">
+				<img style="display: none" v-for="image in images" :src="image.thumb" :origin="image.origin"
+					 :key="image.origin">
 			</viewer>
 		</div>
 	</a-card>
@@ -529,10 +530,12 @@
                 this.images = this.data.filter(record => {
                     return record.image;
                 }).map(record => {
+                    let url = `/mos/${this.currentBucket}${record.urlEncodePath}`;
+                    let thumb = record.thumbFileHouseId ? url + "?thumb=true" : url;
                     return {
-                        origin:`/mos/${this.currentBucket}${record.urlEncodePath}`,
-						thumb:`/mos/${this.currentBucket}${record.urlEncodePath}?thumb=true`
-					};
+                        origin: url,
+                        thumb: thumb
+                    };
                 });
             }
         },
