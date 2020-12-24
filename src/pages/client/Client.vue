@@ -49,7 +49,7 @@
 </template>
 <script>
     const columns = [
-        {title: '客户端id', dataIndex: 'clientId', width: 240},
+        {title: '客户端名', dataIndex: 'name', width: 240},
         {title: 'ip', dataIndex: 'ip', width: 120},
         {title: '端口', dataIndex: 'port', width: 80},
         {title: '权重', dataIndex: 'weight', width: 80},
@@ -86,13 +86,13 @@
         },
         methods: {
             onKick(record) {
-                this.$http.delete('/admin/client/kick/' + record.clientId).then(value => {
+                this.$http.delete('/admin/client/kick/' + record.id).then(value => {
                     this.$message.success("剔除成功");
                     this.reload();
                 })
             },
             onRecover(record) {
-                this.$http.put('/admin/client/recover/' + record.clientId).then(value => {
+                this.$http.put('/admin/client/recover/' + record.id).then(value => {
                     this.$message.success("恢复成功");
                     this.reload();
                 });

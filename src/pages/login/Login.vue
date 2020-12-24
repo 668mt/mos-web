@@ -113,7 +113,7 @@
                                 this.$message.success(response.data.message);
                                 this.refreshPerm();
                                 this.$router.replace({
-                                    path: '/resource'
+                                    path: '/home'
                                 })
                             } else {
                                 this.$message.error(response.data.message);

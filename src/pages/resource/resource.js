@@ -4,7 +4,7 @@ import $ from "jquery";
 let $that;
 
 let methods = {
-    setThat(that){
+    setThat(that) {
         $that = that;
     },
     splitFile(file, minPartSize = 2 * 1024 * 1024, maxPartSize = 10 * 1024 * 1024, expectChunks = 100) {
@@ -100,7 +100,7 @@ let methods = {
                 this.updateUploadProgress(false, fileName, files, fileIndex + 1, 1, 1, chunks, chunkIndex + 1);
                 index++;
                 this.doUploadPart(waitingUpload, index, bucketName, cover, contentType, isPublic, pathname, totalMd5, totalSize, chunks, files, fileIndex, callback);
-            },reason => {
+            }, reason => {
                 $that.uploading = false;
                 $that.uploadProgress.errorMsg = reason;
                 console.log(pathname + '上传失败：', reason);
@@ -141,6 +141,7 @@ let methods = {
                     const waitingUpload = [];
                     uploadParts.forEach((uploadPart, chunkIndex) => {
                         if ($that.$mt.contains(existedChunkIndexs, chunkIndex)) {
+                            this.updateUploadProgress(false, fileName, $that.fileList.length, index + 1, 1, 1, chunks, chunkIndex + 1);
                             return;
                         }
                         waitingUpload.push({
@@ -152,7 +153,6 @@ let methods = {
                         mergeFormData.append("cover", cover);
                         mergeFormData.append("contentType", contentType);
                         mergeFormData.append("isPublic", isPublic);
-                        mergeFormData.append('file', file);
                         mergeFormData.append('pathname', pathname);
                         mergeFormData.append('totalMd5', totalMd5);
                         mergeFormData.append('totalSize', totalSize);
@@ -186,13 +186,13 @@ let methods = {
             this.updateUploadProgress(false, fileName, fileList.length, index + 1, checks, checkIndex, 1, 0);
         });
     },
-    initUploadProgress(){
+    initUploadProgress() {
         $that.uploadProgress = {
             files: $that.fileList.length,
             fileIndex: 1,
             current: '',
             uploadPercent: 0,
-            errorMsg:null
+            errorMsg: null
         }
     },
     genAddr() {
@@ -238,7 +238,7 @@ let methods = {
         if (record) {
             $that.onRecentClick(record);
         }
-        console.log(url,record,$that.images)
+        console.log(url, record, $that.images)
         for (let i = 0; i < $that.images.length; i++) {
             if ($that.images[i].origin.indexOf(url) !== -1) {
                 $that.$viewer.view(i);
@@ -257,7 +257,9 @@ let methods = {
     fetchBucket() {
         $that.$http.get("/member/bucket/list").then(response => {
             $that.buckets = response.data.result;
-            $that.currentBucket = $that.buckets[0].bucketName;
+            if (!$that.currentBucket) {
+                $that.currentBucket = $that.buckets[0].bucketName;
+            }
         })
     },
     getHistoryParams(extendParams) {

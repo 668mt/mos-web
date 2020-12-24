@@ -7,6 +7,7 @@ import User from "../pages/user/User";
 import Bucket from "../pages/bucket/Bucket";
 import Resource from "../pages/resource/Resource.vue";
 import Client from "../pages/client/Client";
+import Home from "../pages/home/Home";
 
 Vue.use(Router);
 
@@ -33,6 +34,11 @@ let getRoutes = function(){
                 icon: 'inbox',
                 component: PageView,
                 children: [{
+                    path: '/home',
+                    name: '主页',
+                    component: Home,
+                    icon: 'none'
+                },{
                     path: '/client',
                     name: '服务器管理',
                     component: Client,

@@ -100,6 +100,12 @@
 					<a-tag v-else color="#87d068">私有</a-tag>
 				</span>
 			</span>
+			<span slot="visits" slot-scope="text,record">
+				<span v-if="!record.isDir">
+					{{text}}
+				</span>
+			</span>
+			
 			<span slot="action" slot-scope="text,record">
 				<span :style="canDelete() ? '' : 'display:none'">
 					<a-popconfirm
@@ -285,6 +291,7 @@
         {title: '文件大小', dataIndex: 'readableSize', width: 120, sorter: true},
         {title: '权限', dataIndex: 'isPublic', width: 120, scopedSlots: {customRender: 'isPublic'}, sorter: true},
         {title: '响应头', dataIndex: 'contentType', width: 200},
+        {title: '访问量', dataIndex: 'visits', width: 100, scopedSlots: {customRender: 'visits'}, sorter: true},
         {title: '修改时间', dataIndex: 'updatedDate', width: 160, sorter: true},
         {title: '修改人', dataIndex: 'updatedBy', width: 120, sorter: true},
         {title: '操作', width: 220, scopedSlots: {customRender: 'action'},},
@@ -466,7 +473,6 @@
         mounted() {
             resource.setThat(this);
             window.addEventListener("popstate", resource.popHandler, false);
-            resource.fetchBucket();
             const queryParams = this.$route.query;
             if (queryParams) {
                 if (queryParams.n) {
@@ -491,6 +497,7 @@
                     this.currentBucket = queryParams.b;
                 }
             }
+            resource.fetchBucket();
             this.contentTypeDataSource = [...this.allContentTypes];
             $(".ant-table-body").css("overflow-x", "auto");
 
@@ -504,6 +511,7 @@
             currentBucket() {
                 let pagination = this.pagination;
                 this.data = [];
+                //只有第一次进来的时候需要记忆加载
                 if (!this.refreshed) {
                     this.fetch({
                         pageNum: 1,
@@ -774,9 +782,9 @@
                     this.sortOrder = null;
                 }
                 this.selectedRowKeys = [];
-                this.reload();
+                this.reload(false);
             },
-            reload() {
+            reload(ignoreHistory = true) {
                 let pagination = this.pagination;
                 this.fetch({
                     pageNum: pagination.current,
@@ -785,7 +793,7 @@
                     keyWord: this.keyWord,
                     sortField: this.sortField,
                     sortOrder: this.sortOrder,
-                    ignoreHistory: true
+                    ignoreHistory: ignoreHistory
                 });
             },
             fetch(params = {
@@ -829,6 +837,7 @@
                     this.tableLoading = false;
                 });
             },
+            //上传
             handleOk(e) {
                 this.form.validateFieldsAndScroll((err, values) => {
                     if (!err) {
