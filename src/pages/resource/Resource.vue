@@ -9,10 +9,14 @@
 				</a-button>
 				<a-button type="primary" @click="onBatchDelete"
 						  :disabled="!this.canDelete() || this.selectedRowKeys.length === 0">
-					批量删除
+					删除
+				</a-button>
+				<a-button type="primary" @click="onCopyToBucket"
+						  :disabled="!this.canSelect() || this.selectedRowKeys.length === 0">
+					跨桶复制
 				</a-button>
 				<a-input-search placeholder="输入搜索内容" style="margin-left:15px;width: 200px" v-model="keyWord"
-								@search="onSearch()" @change="pressEnter()"/>
+								@search="onSearch()" @pressEnter="onSearch()"/>
 				<a-select v-model="currentBucket" style="width:150px;float: right;">
 					<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
 						{{bucket.bucketName}}
@@ -40,7 +44,7 @@
 		</div>
 		<a-table :columns="columns" :data-source="data" :pagination="pagination"
 				 :row-selection="rowSelection"
-				 :rowKey="(row) => {return row.id}"
+				 :rowKey="(row) => {return (row.isDir?'dir-':'resource-')+row.id}"
 				 :scroll="{ x: 1500 }"
 				 :loading="tableLoading"
 				 @change="handleTableChange">
@@ -130,7 +134,7 @@
 			</span>
 		</a-table>
 		<div>
-			<a-modal v-model="visible" title="上传" @ok="handleOk"
+			<a-modal v-model="visible" title="上传" @ok="onUploadOk"
 					 okText="上传"
 					 :confirmLoading="uploading"
 					 :maskClosable="false"
@@ -271,6 +275,25 @@
 						:model="editDirForm">
 					<a-form-model-item label="资源名" prop="path">
 						<a-input ref="editDirPath" v-model="editDirForm.path" @pressEnter="onEditDirOk"/>
+					</a-form-model-item>
+				</a-form-model>
+			</a-modal>
+			<a-modal v-model="copyVisible" title="复制选中文件" :confirmLoading="copySaving" @ok="onCopyOk"
+					 okText="确定">
+				<a-form-model
+						ref="copyForm"
+						:label-col="{span:6}"
+						:wrapper-col="{span:12}"
+						:model="copyForm">
+					<a-form-model-item label="从" prop="srcBucketName">
+						<a-input v-model="copyForm.srcBucketName" :disabled="true"/>
+					</a-form-model-item>
+					<a-form-model-item label="复制到" prop="desBucketName">
+						<a-select v-model="copyForm.desBucketName">
+							<a-select-option v-for="bucket in copyBuckets" :key="bucket.id" :value="bucket.bucketName">
+								{{bucket.bucketName}}
+							</a-select-option>
+						</a-select>
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
@@ -428,7 +451,16 @@
                 },
                 historyClicks: [],
                 refreshed: true,
-                tableLoading: false
+                tableLoading: false,
+                copyForm: {
+                    srcBucketName: null,
+                    desBucketName: null,
+                    dirIds: null,
+                    resourceIds: null
+                },
+                copyVisible: false,
+                copySaving: false,
+                copyBuckets: []
             };
         },
         computed: {
@@ -463,7 +495,7 @@
                             },
                         },
                     ],
-                    onSelection: this.onSelection,
+                    // onSelection: this.onSelection,
                 };
             },
         },
@@ -512,6 +544,7 @@
                 let pagination = this.pagination;
                 this.data = [];
                 //只有第一次进来的时候需要记忆加载
+                this.selectedRowKeys = [];
                 if (!this.refreshed) {
                     this.fetch({
                         pageNum: 1,
@@ -560,6 +593,33 @@
             canDelete() {
                 return this.hasPerm(this.currentBucket, 'DELETE');
             },
+            //跨桶复制
+            onCopyToBucket() {
+                this.copyBuckets = this.buckets.filter(value => value.bucketName !== this.currentBucket);
+                this.copyForm = {
+                    srcBucketName: this.currentBucket,
+                    desBucketName: this.copyBuckets.length > 0 ? this.copyBuckets[0].bucketName : null,
+                    dirIds: null,
+                    resourceIds: null
+                };
+                this.copyVisible = true;
+            },
+            onCopyOk() {
+                const selectRows = this.getSelectRecords();
+                const dirIds = selectRows.filter(value => value.isDir).map(item => item.id);
+                const resourceIds = selectRows.filter(value => !value.isDir).map(item => item.id);
+                let copyForm = this.copyForm;
+                if (!copyForm.desBucketName) {
+                    this.$message.warn('请选择目标桶！');
+                    return;
+                }
+                copyForm.dirIds = dirIds;
+                copyForm.resourceIds = resourceIds;
+                this.$http.post(`/member/resource/copy/${copyForm.srcBucketName}/to/${copyForm.desBucketName}`, copyForm).then(response => {
+                    this.$message.success('复制成功！');
+                    this.copyVisible = false;
+                })
+            },
             onCreateDir() {
                 this.editDirVisible = true;
                 let path = this.currentDir.path;
@@ -584,14 +644,52 @@
                     this.$refs.editDirPath.focus();
                 });
             },
+            //修改文件夹
             onEditDirOk() {
                 this.editDirSaving = true;
+                const $this = this;
                 if (this.editDirForm.id) {
-                    this.$http.put(`/member/dir/${this.currentBucket}/${this.editDirForm.id}`, this.editDirForm).then(response => {
-                        this.$message.success("修改成功");
-                        this.editDirSaving = false;
-                        this.editDirVisible = false;
-                        this.reload();
+                    let desPath = this.editDirForm.path;
+                    this.$http.get(`/member/dir/${this.currentBucket}/findByPath`, {
+                        params: {
+                            path: desPath
+                        }
+                    }).then(response => {
+                        let desDir = response.data.result;
+                        let isExists = !!desDir;
+                        if (isExists) {
+                            let srcDir = this.data.filter(value => value.isDir && value.id === $this.editDirForm.id)[0];
+                            let srcPath = srcDir.path;
+                            this.$confirm({
+                                title: '合并确认',
+                                content: '文件夹' + desPath + '已存在，是否将' + srcPath + '合并到' + desPath + '?',
+                                okText: '确认',
+                                cancelText: '取消',
+                                onOk() {
+                                    $this.$http.put(`/member/dir/${$this.currentBucket}/merge/${srcDir.id}/to/${desDir.id}`).then(res => {
+                                        $this.$message.success('合并成功');
+                                        $this.currentDir = desDir;
+                                        $this.editDirVisible = false;
+                                        $this.editDirSaving = false;
+                                        $this.reload();
+                                    }, reason => {
+                                        $this.editDirSaving = false;
+                                    })
+                                },
+                                onCancel() {
+                                    $this.editDirSaving = false;
+                                }
+                            });
+                        } else {
+                            this.$http.put(`/member/dir/${this.currentBucket}/${this.editDirForm.id}`, this.editDirForm).then(response => {
+                                this.$message.success("修改成功");
+                                this.editDirSaving = false;
+                                this.editDirVisible = false;
+                                this.reload();
+                            }, reason => {
+                                $this.editDirSaving = false;
+                            });
+                        }
                     }, reason => {
                         this.editDirSaving = false;
                     });
@@ -730,18 +828,22 @@
                     this.reload();
                 });
             },
-            onBatchDelete() {
-                let dirIds = [];
-                let fileIds = [];
+            getSelectRecords() {
                 const rows = this.data;
                 const selectedRowKeys = this.selectedRowKeys;
-                const selectedRows = selectedRowKeys.map(id => {
+                return selectedRowKeys.map(value => {
                     for (let row of rows) {
-                        if (row.id === id) {
+                        const key = (row.isDir ? 'dir-' : 'resource-') + row.id;
+                        if (key === value) {
                             return row;
                         }
                     }
-                })
+                }).filter(value => value);
+            },
+            onBatchDelete() {
+                let dirIds = [];
+                let fileIds = [];
+                const selectedRows = this.getSelectRecords();
                 let dirNames = selectedRows.filter(value => value.isDir).map(value => value.path);
                 let fileNames = selectedRows.filter(value => !value.isDir).map(value => value.path);
                 dirIds = selectedRows.filter(value => value.isDir).map(value => value.id);
@@ -837,8 +939,8 @@
                     this.tableLoading = false;
                 });
             },
-            //上传
-            handleOk(e) {
+            //文件上传
+            onUploadOk(e) {
                 this.form.validateFieldsAndScroll((err, values) => {
                     if (!err) {
                         const pathnames = values.pathnames;

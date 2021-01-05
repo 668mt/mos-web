@@ -120,6 +120,7 @@ let methods = {
             return;
         }
         let file = fileList[index];
+        let lastModified = file.lastModified;
         const pathname = pathnames[index];
         let splitResult = this.splitFile(file);
         let chunks = splitResult.chunks;
@@ -131,7 +132,7 @@ let methods = {
         console.log(splitResult)
         this.md5File(file, totalMd5 => {
             let params = {
-                pathname, chunks, totalMd5, totalSize, contentType, isPublic, cover
+                pathname, chunks, totalMd5, totalSize, contentType, isPublic, cover,lastModified
             };
             $that.$http.post(`/upload/${bucketName}/init`, $that.$mt.transformFormData(params)).then(response => {
                 let result = response.data.result;
@@ -157,6 +158,7 @@ let methods = {
                         mergeFormData.append('totalMd5', totalMd5);
                         mergeFormData.append('totalSize', totalSize);
                         mergeFormData.append('bucketName', bucketName);
+                        mergeFormData.append('lastModified', lastModified);
                         $that.$http.post('/upload/mergeFiles?wait=true', mergeFormData)
                             .then(response => {
                                 console.log(pathname + "上传完成！");

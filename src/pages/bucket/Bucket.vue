@@ -319,6 +319,7 @@
                         this.fetchExpandedRow();
                         this.accessVisible = false;
                         this.$message.success("修改成功");
+                        this.refreshPerm();
                     });
                 } else {
                     //新增
@@ -326,6 +327,7 @@
                         this.fetchExpandedRow();
                         this.accessVisible = false;
                         this.$message.success("新增成功");
+                        this.refreshPerm();
                     });
                 }
             },
@@ -389,12 +391,14 @@
                                 this.$message.success('新增成功！');
                                 this.visible = false;
                                 this.fetch();
+                                this.refreshPerm();
                             });
                         } else {
                             this.$http.put('/member/bucket', data).then(response => {
                                 this.$message.success('更新成功！');
                                 this.visible = false;
                                 this.fetch();
+                                this.refreshPerm();
                             });
                         }
                     } else {
@@ -446,6 +450,7 @@
                 this.$http.post('/member/bucket/grant', body).then(response => {
                     this.$message.success("授权成功");
                     this.grantVisible = false;
+                    this.refreshPerm();
                 });
             }
         },
