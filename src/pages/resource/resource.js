@@ -132,7 +132,7 @@ let methods = {
         console.log(splitResult)
         this.md5File(file, totalMd5 => {
             let params = {
-                pathname, chunks, totalMd5, totalSize, contentType, isPublic, cover,lastModified
+                pathname, chunks, totalMd5, totalSize, contentType, isPublic, cover, lastModified
             };
             $that.$http.post(`/upload/${bucketName}/init`, $that.$mt.transformFormData(params)).then(response => {
                 let result = response.data.result;
@@ -163,17 +163,30 @@ let methods = {
                             .then(response => {
                                 console.log(pathname + "上传完成！");
                                 this.updateUploadProgress(true, fileName, $that.fileList.length, index + 1, 1, 1, 1, 1);
-                                $that.reload();
+                                $that.$notification.success({
+                                    message: "上传成功",
+                                    description: pathname + "上传成功！",
+                                    placement:"topRight"
+                                });
                                 index++;
                                 this.uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback);
                             }, reason => {
                                 $that.uploading = false;
                                 $that.uploadProgress.errorMsg = reason;
                                 console.log(pathname + '上传失败：', reason);
+                                $that.$notification.success({
+                                    message: "上传失败",
+                                    description: pathname + "上传失败："+reason
+                                });
                             });
                     });
                 } else {
                     console.log(pathname + "上传完成！");
+                    $that.$notification.success({
+                        message: "上传成功",
+                        description: pathname + "上传成功！",
+                        placement:"topRight"
+                    });
                     //秒传
                     this.updateUploadProgress(true, fileName, $that.fileList.length, index + 1, 1, 1, 1, 1);
                     index++;

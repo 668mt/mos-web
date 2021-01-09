@@ -2,7 +2,7 @@
 	<a-card>
 		<a-row style="margin-bottom:10px;">
 			<div class="tool-btns">
-				<a-button type="primary" @click="onAdd" :disabled="!this.canInsert()">上传
+				<a-button type="primary" @click="onUpload" :disabled="!this.canInsert()">上传
 				</a-button>
 				<a-button type="primary" @click="onCreateDir" :disabled="!this.canInsert()">
 					创建文件夹
@@ -337,6 +337,7 @@
                     current: {}
                 },
                 images: [],
+                pathnameCheckResults: [],
                 checkPathname: (rule, value, callback) => {
                     if (value === '') {
                         callback();
@@ -347,19 +348,25 @@
                     if (this.cover) {
                         callback();
                     }
-                    let bucketName = this.form.getFieldValue('bucketName');
-                    this.$http.get(`/upload/${bucketName}/isExists`, {
-                        params: {
-                            pathname: value
-                        }
-                    }).then(response => {
-                        let isExists = response.data.result;
-                        if (isExists) {
-                            callback(new Error('资源已存在'));
-                        } else {
-                            callback();
-                        }
-                    });
+                    const result = this.pathnameCheckResults[value];
+                    if (result) {
+                        callback(new Error('资源已存在'));
+                    } else {
+                        callback();
+                    }
+                    // let bucketName = this.form.getFieldValue('bucketName');
+                    // this.$http.get(`/upload/${bucketName}/isExists`, {
+                    //     params: {
+                    //         pathname: value
+                    //     }
+                    // }).then(response => {
+                    //     let isExists = response.data.result;
+                    //     if (isExists) {
+                    //         callback(new Error('资源已存在'));
+                    //     } else {
+                    //         callback();
+                    //     }
+                    // });
                 },
                 lastDir: null,
                 parentDirs: [],
@@ -767,11 +774,12 @@
                 this.selectedRowKeys = selectedRowKeys;
             },
             //点击上传按钮
-            onAdd() {
+            onUpload() {
                 if (!this.currentBucket) {
                     this.$message.warn("您还没有桶，请先去创建一个吧");
                     return;
                 }
+                this.pathnameCheckResults = [];
                 this.uploadDirectory = false;
                 this.form = {
                     bucketName: this.currentBucket,
@@ -941,21 +949,28 @@
             },
             //文件上传
             onUploadOk(e) {
-                this.form.validateFieldsAndScroll((err, values) => {
-                    if (!err) {
-                        const pathnames = values.pathnames;
-                        const bucketName = values.bucketName;
-                        const cover = values.cover === undefined ? false : values.cover;
-                        const isPublic = values.isPublic === undefined ? false : values.isPublic;
-                        const contentType = values.contentType === undefined ? '' : values.contentType;
-                        resource.initUploadProgress();
-                        resource.uploadFile(this.fileList, 0, bucketName, pathnames, cover, isPublic, contentType, () => {
-                            this.uploading = false;
-                            this.$message.success("上传成功!");
-                            this.visible = false;
-                            this.reload();
-                        });
-                    }
+                this.$http.post(`/member/resource/${this.currentBucket}/checkFile/isExists`, {
+                    pathnames: this.form.getFieldValue("pathnames")
+                }).then(response => {
+                    this.pathnameCheckResults = response.data.result.checkResults;
+                    this.form.validateFieldsAndScroll({
+						force:true
+					},(err, values) => {
+                        if (!err) {
+                            const pathnames = values.pathnames;
+                            const bucketName = values.bucketName;
+                            const cover = values.cover === undefined ? false : values.cover;
+                            const isPublic = values.isPublic === undefined ? false : values.isPublic;
+                            const contentType = values.contentType === undefined ? '' : values.contentType;
+                            resource.initUploadProgress();
+                            resource.uploadFile(this.fileList, 0, bucketName, pathnames, cover, isPublic, contentType, () => {
+                                this.uploading = false;
+                                this.$message.success("上传完成!");
+                                this.visible = false;
+                                this.reload();
+                            });
+                        }
+                    });
                 });
             },
             handleRemove(file) {
@@ -995,7 +1010,9 @@
             },
             onCoverChange(cover) {
                 this.cover = cover;
-                this.form.validateFields();
+                this.form.validateFields({
+					force:true
+				});
             },
             beforeUpload(file) {
                 const pathname = this.getUploadPathname(file);
