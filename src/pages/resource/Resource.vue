@@ -15,8 +15,17 @@
 						  :disabled="!this.canSelect() || this.selectedRowKeys.length === 0">
 					跨桶复制
 				</a-button>
-				<a-input-search placeholder="输入搜索内容" style="margin-left:15px;width: 200px" v-model="keyWord"
-								@search="onSearch()" @pressEnter="onSearch()"/>
+				<a-input-search :placeholder="searchLocation === 'curr' ? '搜索当前位置' : '搜索所有位置'" style="margin-left:15px;width: 300px" v-model="keyWord"
+								@search="onSearch()" @pressEnter="onSearch()">
+					<a-select slot="addonBefore" v-model="searchLocation" style="width: 70px">
+						<a-select-option value="curr">
+							当前
+						</a-select-option>
+						<a-select-option value="all">
+							所有
+						</a-select-option>
+					</a-select>
+				</a-input-search>
 				<a-select v-model="currentBucket" style="width:150px;float: right;">
 					<a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
 						{{bucket.bucketName}}
@@ -53,7 +62,7 @@
 					<!-- 文件夹 -->
 					<icon-font class="resource-icon" type="icon-weibiaoti-_huabanfuben" style="font-size:18px;"/>
 					<a :id="record.id" :class="getResourceClass(record)" @click="changeCurrentPath(record)">
-						/{{record.fileName}}
+						{{showDetailPath?record.path:('/'+record.fileName)}}
 					</a>
 				</span>
 				<span v-else>
@@ -85,14 +94,14 @@
 							   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
 							   :class="getResourceClass(record)"
 							>
-								{{record.fileName}}
+								{{showDetailPath?record.path:record.fileName}}
 							</a>
 							<a :id="record.id" v-else
 							   :class="getResourceClass(record)"
 							   :href="`/mos/${currentBucket}${record.urlEncodePath}`"
 							   @click="onRecentClick(record)"
 							   target="_blank">
-								{{record.fileName}}
+								{{showDetailPath?record.path:record.fileName}}
 							</a>
 						</a-col>
 					</a-row>
@@ -337,6 +346,7 @@
                     current: {}
                 },
                 images: [],
+				searchLocation:'curr',
                 pathnameCheckResults: [],
                 checkPathname: (rule, value, callback) => {
                     if (value === '') {
@@ -354,19 +364,6 @@
                     } else {
                         callback();
                     }
-                    // let bucketName = this.form.getFieldValue('bucketName');
-                    // this.$http.get(`/upload/${bucketName}/isExists`, {
-                    //     params: {
-                    //         pathname: value
-                    //     }
-                    // }).then(response => {
-                    //     let isExists = response.data.result;
-                    //     if (isExists) {
-                    //         callback(new Error('资源已存在'));
-                    //     } else {
-                    //         callback();
-                    //     }
-                    // });
                 },
                 lastDir: null,
                 parentDirs: [],
@@ -450,7 +447,8 @@
                 queryAlias: {
                     pageNum: 'n',
                     pageSize: 's',
-                    urlEncodePath: 'p',
+                    path: 'p',
+                    searchLocation: 'l',
                     keyWord: 'k',
                     sortField: 'f',
                     sortOrder: 'o',
@@ -467,7 +465,8 @@
                 },
                 copyVisible: false,
                 copySaving: false,
-                copyBuckets: []
+                copyBuckets: [],
+				showDetailPath:false
             };
         },
         computed: {
@@ -521,7 +520,7 @@
                     this.pagination.pageSize = parseInt(queryParams.s);
                 }
                 if (queryParams.p) {
-                    this.currentDir.urlEncodePath = queryParams.p;
+                    this.currentDir.path = queryParams.p;
                 }
                 if (queryParams.k) {
                     this.keyWord = queryParams.k;
@@ -535,6 +534,9 @@
                 if (queryParams.b) {
                     this.currentBucket = queryParams.b;
                 }
+                if(queryParams.l){
+                    this.searchLocation = queryParams.l;
+				}
             }
             resource.fetchBucket();
             this.contentTypeDataSource = [...this.allContentTypes];
@@ -563,11 +565,10 @@
                     });
                 } else {
                     let current = pagination.current ? pagination.current : 1;
-                    this.refreshed = false;
                     this.fetch({
                         pageNum: current,
                         pageSize: pagination.pageSize,
-                        path: this.currentDir.urlEncodePath,
+                        path: this.searchLocation === 'all' ? '' : this.currentDir.path,
                         keyWord: this.keyWord,
                         sortField: this.sortField,
                         sortOrder: this.sortOrder
@@ -731,10 +732,14 @@
                 this.$viewer = viewer
             },
             onSearch() {
+                let path = this.currentDir.path;
+                if(this.searchLocation === 'all'){
+                    path = '';
+				}
                 this.fetch({
                     pageNum: 1,
                     pageSize: this.pagination.pageSize,
-                    path: this.currentDir.urlEncodePath,
+                    path: path,
                     keyWord: this.keyWord,
                     sortField: this.sortField,
                     sortOrder: this.sortOrder
@@ -803,11 +808,13 @@
             },
             changeCurrentPath(dir, extendParams, ignoreHistory) {
                 this.onRecentClick(dir);
+                this.searchLocation = 'curr';
+                this.keyWord = '';
                 ignoreHistory = ignoreHistory === undefined ? false : ignoreHistory;
                 let params = {
                     pageNum: 1,
                     pageSize: this.pagination.pageSize,
-                    path: dir ? dir.urlEncodePath : '/',
+                    path: dir ? dir.path : '/',
                     keyWord: this.keyWord,
                     sortField: this.sortField,
                     sortOrder: this.sortOrder,
@@ -815,7 +822,7 @@
                 };
                 extendParams = extendParams || {}
                 $.extend(params, extendParams, {
-                    path: dir ? dir.urlEncodePath : '/'
+                    path: dir ? dir.path : '/'
                 })
                 this.fetch(params, () => {
                     this.currentDir = dir;
@@ -899,7 +906,7 @@
                 this.fetch({
                     pageNum: pagination.current,
                     pageSize: pagination.pageSize,
-                    path: this.currentDir.urlEncodePath,
+                    path: this.currentDir.path,
                     keyWord: this.keyWord,
                     sortField: this.sortField,
                     sortOrder: this.sortOrder,
@@ -909,13 +916,13 @@
             fetch(params = {
                 pageNum: 1,
                 pageSize: 10,
-                path: this.currentDir.urlEncodePath,
+                path: this.currentDir.path,
                 keyWord: this.keyWord,
                 sortField: null,
-                sortOrder: null,
+                sortOrder: null
             }, callback) {
                 this.tableLoading = true;
-                this.$http.get("/member/resource/" + this.currentBucket + params.path, {
+                this.$http.get(`/member/resource/${this.currentBucket}/list`, {
                     params: params
                 }).then(value => {
                     this.tableLoading = false;
@@ -938,8 +945,11 @@
                     }
                     this.pagination = pagination;
                     if (!params.ignoreHistory) {
-                        resource.addHistory();
+                        resource.addHistory({
+							path:params.path
+						});
                     }
+                    this.showDetailPath = params.path === '';
                     if (callback) {
                         callback();
                     }

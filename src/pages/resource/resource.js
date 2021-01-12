@@ -287,7 +287,8 @@ let methods = {
             keyWord: $that.keyWord,
             sortField: $that.sortField,
             sortOrder: $that.sortOrder,
-            currentBucket: $that.currentBucket
+            currentBucket: $that.currentBucket,
+            searchLocation: $that.searchLocation,
         }
         $.extend(params, extendParams);
         let url = "/resource?";
