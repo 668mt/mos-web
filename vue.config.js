@@ -5,7 +5,7 @@ module.exports = {
         port:8080,
         https:false,
         proxy:{
-            '/member|/admin|/login|/mos|/upload|/js|/kaptcha':{
+            '/member|/admin|/login|/mos|/upload|/js|/kaptcha|/css|/ckplayer':{
                 target:'http://localhost:9700/',
                 changeOrigin: true,
                 // pathRewrite:{

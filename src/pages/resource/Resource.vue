@@ -35,7 +35,7 @@
 		</a-row>
 		<div style="margin:10px;">
 			<!-- 返回 -->
-			<a class="dir-nav" @click="onBack(lastDir)" :disabled="!lastDir">
+			<a class="dir-nav" @click="onBack()">
 				<a-icon type="rollback"/>
 			</a>
 			<a style="margin-left: 10px;" @click="reload">
@@ -735,6 +735,8 @@
                 let path = this.currentDir.path;
                 if(this.searchLocation === 'all'){
                     path = '';
+				}else if(path === ''){
+                    path = '/';
 				}
                 this.fetch({
                     pageNum: 1,
@@ -803,13 +805,13 @@
                 this.form = this.$form.createForm(this, {name: 'register'});
                 this.visible = true;
             },
-            onBack(dir) {
+            onBack() {
                 history.back();
             },
             changeCurrentPath(dir, extendParams, ignoreHistory) {
                 this.onRecentClick(dir);
-                this.searchLocation = 'curr';
-                this.keyWord = '';
+                this.keyWord = extendParams ? extendParams.keyWord : '';
+                this.searchLocation = dir.path === "" ? 'all' : 'curr';
                 ignoreHistory = ignoreHistory === undefined ? false : ignoreHistory;
                 let params = {
                     pageNum: 1,
@@ -959,6 +961,10 @@
             },
             //文件上传
             onUploadOk(e) {
+                if(this.fileList.length === 0){
+                    this.$message.warn('请先选择要上传的文件！');
+                    return;
+				}
                 this.$http.post(`/member/resource/${this.currentBucket}/checkFile/isExists`, {
                     pathnames: this.form.getFieldValue("pathnames")
                 }).then(response => {

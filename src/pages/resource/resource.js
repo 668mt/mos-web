@@ -262,9 +262,9 @@ let methods = {
     },
     popHandler(e) {
         const params = e.state;
-        if (params && params.path) {
+        if (params) {
             $that.changeCurrentPath({
-                path: params.path,
+                path: params.path ? params.path : '',
                 urlEncodePath: params.urlEncodePath
             }, params, true)
         }
