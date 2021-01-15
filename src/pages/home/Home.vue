@@ -69,7 +69,7 @@
 
 <script>
     var echarts = require('echarts');
-    let refresh = false;
+    
     export default {
         data() {
             return {
@@ -89,7 +89,6 @@
         },
         mounted() {
             let $this = this;
-            refresh = true;
             $this.fetchStatistics();
         },
         watch: {
@@ -100,14 +99,9 @@
                     }
                 });
                 let $this = this;
-                if (refresh) {
-                    refresh = false;
-                    setTimeout(function () {
-                        $this.createChart($this.currentBucketName);
-                    }, 1500);
-                } else {
+                this.$nextTick(() => {
                     $this.createChart($this.currentBucketName);
-                }
+                })
             }
         },
         methods: {
@@ -126,7 +120,7 @@
                 }
                 for (var k in o) {
                     if (new RegExp("(" + k + ")").test(fmt)) {
-                        fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+                        fmt = fmt.replace(RegExp.$1, (RegExp.$1.length === 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
                     }
                 }
                 return fmt;
@@ -136,11 +130,6 @@
                 date.setDate(date.getDate() - 1);
                 return this.format(date, 'yyyy-MM-dd HH:mm');
             },
-            // getRecentYear() {
-            //     let date = new Date();
-            //     date.setFullYear(date.getFullYear() - 1);
-            //     return this.format(date, 'yyyy-MM-dd HH:mm');
-            // },
             getRecent30Days() {
                 let date = new Date();
                 date.setDate(date.getDate() - 30);

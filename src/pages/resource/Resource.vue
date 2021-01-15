@@ -940,7 +940,10 @@
                         pagination.current = result.resources.pageNum;
                         this.data = [...result.resources.list];
                         pagination.total = result.resources.total;
-                        pagination.pageSize = result.resources.pageSize;
+                        let pageSize = result.resources.pageSize;
+                        if(pageSize > 0){
+                            pagination.pageSize = pageSize;
+						}
                     } else {
                         this.data = [];
                         pagination.total = 0;
