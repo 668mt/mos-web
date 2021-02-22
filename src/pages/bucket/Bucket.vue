@@ -97,7 +97,7 @@
 			</a-modal>
 			<a-modal v-model="grantVisible" title="授权" @ok="grantOk" width="1200px">
 				<!--						show-search-->
-<!--						@change2="handleGrantChange"-->
+				<!--						@change2="handleGrantChange"-->
 				<a-transfer
 						show-search
 						:filterOption="filterOption"
@@ -105,6 +105,7 @@
 						:list-style="{width: '500px'}"
 						:operations="['添加授权', '删除授权']"
 						:target-keys="grantUserKeys"
+						@change="handleGrantChange"
 				>
 					<template
 							slot="children"
@@ -160,59 +161,21 @@
     import difference from 'lodash/difference';
 
     const columns = [
-        {
-            title: '所有者',
-            dataIndex: 'owner',
-            scopedSlots: {customRender: 'owner'},
-        },
-        {
-            title: '名称',
-            dataIndex: 'bucketName',
-        },
-        {
-            title: '默认权限',
-            dataIndex: 'defaultIsPublic',
-            scopedSlots: {customRender: 'defaultIsPublic'},
-        },
-        {
-            title: '分片数',
-            dataIndex: 'dataFragmentsAmount',
-        },
-        {
-            title: '创建时间',
-            dataIndex: 'createdDate',
-        },
-        {
-            title: '修改时间',
-            dataIndex: 'updatedDate',
-        },
-        {
-            title: '操作',
-            scopedSlots: {customRender: 'action'},
-        },
+        {title: '所有者', dataIndex: 'owner', scopedSlots: {customRender: 'owner'},},
+        {title: '名称', dataIndex: 'bucketName',},
+        {title: '默认权限', dataIndex: 'defaultIsPublic', scopedSlots: {customRender: 'defaultIsPublic'},},
+        {title: '分片数', dataIndex: 'dataFragmentsAmount',},
+        {title: '创建时间', dataIndex: 'createdDate',},
+        {title: '修改时间', dataIndex: 'updatedDate',},
+        {title: '操作', scopedSlots: {customRender: 'action'},},
     ];
     const innerColumns = [
-        {
-            title: 'openId',
-            dataIndex: 'openId'
-        }, {
-            title: '用途',
-            dataIndex: 'useInfo'
-        }, {
-            title: '私钥',
-            dataIndex: 'secretKey',
-            scopedSlots: {customRender: 'secretKey'},
-            ellipsis: true
-        }, {
-            title: '创建时间',
-            dataIndex: 'createdDate',
-        }, {
-            title: '修改时间',
-            dataIndex: 'updatedDate',
-        }, {
-            title: '操作',
-            scopedSlots: {customRender: 'action'},
-        }
+        {title: 'openId', dataIndex: 'openId'},
+        {title: '用途', dataIndex: 'useInfo'},
+        {title: '私钥', dataIndex: 'secretKey', scopedSlots: {customRender: 'secretKey'}, ellipsis: true},
+        {title: '创建时间', dataIndex: 'createdDate',},
+        {title: '修改时间', dataIndex: 'updatedDate',},
+        {title: '操作', scopedSlots: {customRender: 'action'},}
     ];
     const grantColumns = [
         {title: '姓名', dataIndex: 'name', width: 80},
@@ -267,10 +230,10 @@
             });
         },
         methods: {
-            filterOption(inputValue, option){
-            	return (option.name && option.name.indexOf(inputValue) !== -1)
-					|| (option.username && option.username.indexOf(inputValue) !== -1);
-			},
+            filterOption(inputValue, option) {
+                return (option.name && option.name.indexOf(inputValue) !== -1)
+                    || (option.username && option.username.indexOf(inputValue) !== -1);
+            },
             onRowClick(e, key, selectedKeys, itemSelect) {
                 let length = $(e.target).parents('.ant-select').length;
                 if (length > 0) {

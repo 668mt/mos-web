@@ -31,11 +31,11 @@
 					:label-col="{span:6}"
 					:wrapper-col="{span:12}"
 					:model="form">
-				<a-form-model-item label="用户名" prop="username">
-					<a-input v-model="form.username" disabled=""/>
-				</a-form-model-item>
 				<a-form-model-item label="姓名" prop="name">
 					<a-input v-model="form.name"/>
+				</a-form-model-item>
+				<a-form-model-item label="用户名" prop="username">
+					<a-input v-model="form.username" :disabled="true"/>
 				</a-form-model-item>
 				<a-form-model-item label="当前密码" prop="currentPassword">
 					<a-input type="password" v-model="form.currentPassword" placeholder="不填写表示不修改"/>

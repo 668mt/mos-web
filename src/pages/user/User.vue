@@ -47,11 +47,11 @@
 						:label-col="{span:6}"
 						:wrapper-col="{span:12}"
 						:model="form">
-					<a-form-model-item label="用户名" prop="username">
-						<a-input v-model="form.username"/>
-					</a-form-model-item>
 					<a-form-model-item label="姓名" prop="name">
 						<a-input v-model="form.name"/>
+					</a-form-model-item>
+					<a-form-model-item label="用户名" prop="username">
+						<a-input v-model="form.username"/>
 					</a-form-model-item>
 					<a-form-model-item label="密码" prop="password">
 						<a-input type="password" v-model="form.password" placeholder="不填写表示不修改"/>
@@ -75,12 +75,12 @@
 
     const columns = [
         {
-            title: '用户名',
-            dataIndex: 'username',
-        },
-        {
             title: '姓名',
             dataIndex: 'name',
+        },
+        {
+            title: '用户名',
+            dataIndex: 'username',
         },
         {
             title: '是否管理员',
@@ -96,6 +96,14 @@
             title: '是否被锁定',
             dataIndex: 'locked',
             scopedSlots: {customRender: 'locked'},
+        },
+        {
+            title: '上次登录时间',
+            dataIndex: 'lastLoginDate',
+        },
+        {
+            title: '登录次数',
+            dataIndex: 'loginTimes',
         },
         {
             title: '创建时间',

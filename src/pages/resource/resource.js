@@ -120,6 +120,7 @@ let methods = {
             return;
         }
         let file = fileList[index];
+        file.status = 'uploading';
         let lastModified = file.lastModified;
         const pathname = pathnames[index];
         let splitResult = this.splitFile(file);
@@ -163,6 +164,7 @@ let methods = {
                             .then(response => {
                                 console.log(pathname + "上传完成！");
                                 this.updateUploadProgress(true, fileName, $that.fileList.length, index + 1, 1, 1, 1, 1);
+                                file.status = 'done';
                                 $that.$notification.success({
                                     message: "上传成功",
                                     description: pathname + "上传成功！",
@@ -171,6 +173,7 @@ let methods = {
                                 index++;
                                 this.uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback);
                             }, reason => {
+                                file.status = 'error';
                                 $that.uploading = false;
                                 $that.uploadProgress.errorMsg = reason;
                                 console.log(pathname + '上传失败：', reason);
@@ -182,6 +185,7 @@ let methods = {
                     });
                 } else {
                     console.log(pathname + "上传完成！");
+                    file.status = 'done';
                     $that.$notification.success({
                         message: "上传成功",
                         description: pathname + "上传成功！",
@@ -193,6 +197,7 @@ let methods = {
                     this.uploadFile(fileList, index, bucketName, pathnames, cover, isPublic, contentType, callback);
                 }
             }, reason => {
+                file.status = 'error';
                 $that.uploading = false;
                 $that.uploadProgress.errorMsg = reason;
                 console.log(pathname + '上传失败：', reason);
@@ -253,7 +258,6 @@ let methods = {
         if (record) {
             $that.onRecentClick(record);
         }
-        console.log(url, record, $that.images)
         for (let i = 0; i < $that.images.length; i++) {
             if ($that.images[i].origin.indexOf(url) !== -1) {
                 $that.$viewer.view(i);

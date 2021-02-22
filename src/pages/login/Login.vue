@@ -3,10 +3,10 @@
 		<div class="content">
 			<div class="top">
 				<div class="header">
-					<img alt="logo" class="logo" src="@/assets/img/vue-antd-logo.png"/>
+					<img alt="logo" class="logo" src="@/assets/img/logo.png"/>
 					<span class="title">MOS</span>
 				</div>
-				<div class="desc">MOS存储服务管理</div>
+				<div class="desc">对象存储服务</div>
 			</div>
 			<div class="login">
 				<a-form

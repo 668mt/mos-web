@@ -1,62 +1,72 @@
 <template>
-	<div v-if="statistics.length > 0">
+	<div v-if="buckets.length > 0">
 		<a-row style="margin-bottom:10px;">
 			<a-col span="24">
 				<a-card>
 					<span style="font-size: 16px;">欢迎使用Mos对象存储系统！</span>
 					<a-select v-model="currentBucketName" style="width:100px;float:right;">
-						<a-select-option :key="statistic.bucket.id" v-for="statistic in statistics"
-										 :value="statistic.bucket.bucketName">
-							{{statistic.bucket.bucketName}}
+						<a-select-option :key="bucket.id" v-for="bucket in buckets"
+										 :value="bucket.bucketName">
+							{{bucket.bucketName}}
 						</a-select-option>
 					</a-select>
 				</a-card>
 				<a-card :bordered="false" :body-style="{padding: '20px'}">
-					<a-row :gutter="20">
-						<a-col :xs="24" :sm="12" :md="6">
-							<a-statistic title="今日读写请求"
-										 :value="currentStatistic !=null ? currentStatistic.thisDayReadRequests : 0"
-										 class="demo-class">
-								<template #suffix>
-									<span> / {{currentStatistic != null ? currentStatistic.thisDayWriteRequests : 0}}</span>
-								</template>
-							</a-statistic>
-							<a-statistic title="今日读写流量"
-										 :value="currentStatistic !=null ? currentStatistic.readableThisDayRead : 0"
-										 class="demo-class">
-								<template #suffix>
-									<span> / {{currentStatistic != null ? currentStatistic.readableThisDayWrite : 0}}</span>
-								</template>
-							</a-statistic>
-						</a-col>
-						<a-col :xs="24" :sm="12" :md="6">
-							<a-statistic title="今月读写请求"
-										 :value="currentStatistic !=null ? currentStatistic.thisMonthReadRequests : 0"
-										 class="demo-class">
-								<template #suffix>
-									<span> / {{currentStatistic != null ? currentStatistic.thisMonthWriteRequests : 0}}</span>
-								</template>
-							</a-statistic>
-							<a-statistic title="今月读写流量"
-										 :value="currentStatistic !=null ? currentStatistic.readableThisMonthRead : 0"
-										 class="demo-class">
-								<template #suffix>
-									<span> / {{currentStatistic != null ? currentStatistic.readableThisMonthWrite : 0}}</span>
-								</template>
-							</a-statistic>
-						</a-col>
-					</a-row>
+					<a-spin :spinning="statisticsLoading">
+						<a-row :gutter="20">
+							<a-col :xs="24" :sm="12" :md="6">
+								<a-statistic title="今日读写请求"
+											 :value="currentStatistic !=null ? currentStatistic.thisDayReadRequests : 0"
+											 class="demo-class">
+									<template #suffix>
+										<span> / {{currentStatistic != null ? currentStatistic.thisDayWriteRequests : 0}}</span>
+									</template>
+								</a-statistic>
+								<a-statistic title="今日读写流量"
+											 :value="currentStatistic !=null ? currentStatistic.readableThisDayRead : 0"
+											 class="demo-class">
+									<template #suffix>
+										<span> / {{currentStatistic != null ? currentStatistic.readableThisDayWrite : 0}}</span>
+									</template>
+								</a-statistic>
+							</a-col>
+							<a-col :xs="24" :sm="12" :md="6">
+								<a-statistic title="今月读写请求"
+											 :value="currentStatistic !=null ? currentStatistic.thisMonthReadRequests : 0"
+											 class="demo-class">
+									<template #suffix>
+										<span> / {{currentStatistic != null ? currentStatistic.thisMonthWriteRequests : 0}}</span>
+									</template>
+								</a-statistic>
+								<a-statistic title="今月读写流量"
+											 :value="currentStatistic !=null ? currentStatistic.readableThisMonthRead : 0"
+											 class="demo-class">
+									<template #suffix>
+										<span> / {{currentStatistic != null ? currentStatistic.readableThisMonthWrite : 0}}</span>
+									</template>
+								</a-statistic>
+							</a-col>
+						</a-row>
+					</a-spin>
 				</a-card>
 			</a-col>
 		</a-row>
 		<a-row type="flex" justify="space-around" align="middle" :gutter="16">
 			<a-col :xs="24" :sm="24" :md="12">
-				<a-card ref="request24Hours" id="request24Hours" class="chart" style="margin-bottom: 10px"></a-card>
-				<a-card ref="flow24Hours" id="flow24Hours" class="chart"></a-card>
+				<a-spin :spinning="chartLoading.request24Hours">
+					<a-card ref="request24Hours" id="request24Hours" class="chart" style="margin-bottom: 10px"></a-card>
+				</a-spin>
+				<a-spin :spinning="chartLoading.flow24Hours">
+					<a-card ref="flow24Hours" id="flow24Hours" class="chart"></a-card>
+				</a-spin>
 			</a-col>
 			<a-col :xs="24" :sm="24" :md="12">
-				<a-card ref="request30Days" id="request30Days" class="chart" style="margin-bottom: 10px"></a-card>
-				<a-card ref="flow30Days" id="flow30Days" class="chart"></a-card>
+				<a-spin :spinning="chartLoading.request30Days">
+					<a-card ref="request30Days" id="request30Days" class="chart" style="margin-bottom: 10px"></a-card>
+				</a-spin>
+				<a-spin :spinning="chartLoading.flow30Days">
+					<a-card ref="flow30Days" id="flow30Days" class="chart"></a-card>
+				</a-spin>
 			</a-col>
 		</a-row>
 	</div>
@@ -69,13 +79,19 @@
 
 <script>
     var echarts = require('echarts');
-    
+
     export default {
         data() {
             return {
+                statisticsLoading: false,
+                chartLoading: {
+                    request24Hours: false,
+                    flow24Hours: false,
+                    request30Days: false,
+                    flow30Days: false,
+                },
                 buckets: [],
-                loading: false,
-                statistics: [],
+                statistics: {},
                 charts: {
                     request24Hours: null,
                     flow24Hours: null,
@@ -88,17 +104,18 @@
             }
         },
         mounted() {
-            let $this = this;
-            $this.fetchStatistics();
+            this.$http.get('/member/bucket/list').then(response => {
+                this.buckets = response.data.result;
+                this.loaded = true;
+                if (this.buckets && this.buckets.length > 0) {
+                    this.currentBucketName = this.buckets[0].bucketName;
+                }
+            })
         },
         watch: {
             currentBucketName() {
-                this.statistics.filter(value => {
-                    if (value.bucket.bucketName === this.currentBucketName) {
-                        this.currentStatistic = value;
-                    }
-                });
                 let $this = this;
+                $this.fetchStatistics(this.currentBucketName);
                 this.$nextTick(() => {
                     $this.createChart($this.currentBucketName);
                 })
@@ -148,6 +165,8 @@
                 this.updateChart('flow', this.charts.flow30Days, '最近30天内的流量', bucketName, 'day', this.getRecent30Days())
             },
             updateChart(busy, chart, title, bucketName, by, startDate) {
+                const id = chart._dom.id;
+                this.chartLoading[id] = true;
                 let isFlow = busy === 'flow';
                 this.$http.get(`/member/audit/chart/${busy}/${bucketName}/by/${by}`, {
                     params: {
@@ -216,21 +235,24 @@
                             data: write
                         }]
                     });
+                    this.chartLoading[id] = false;
+                }, reason => {
+                    this.chartLoading[id] = false;
                 });
             },
-            fetchStatistics() {
-                this.loading = true;
-                this.$http.get('/member/audit/statistic/info').then(response => {
-                    this.statistics = response.data.result;
-                    this.loading = false;
-                    if (this.statistics.length > 0) {
-                        this.currentBucketName = this.statistics[0].bucket.bucketName;
-                    } else {
-                        this.statistics = [];
-                    }
-                    this.loaded = true;
+            fetchStatistics(bucketName) {
+                if (this.statistics[bucketName]) {
+                    this.currentStatistic = this.statistics[bucketName];
+                    return;
+                }
+                this.statisticsLoading = true;
+                this.$http.get('/member/audit/statistic/info/' + bucketName).then(response => {
+                    let statistic = response.data.result;
+                    this.statisticsLoading = false;
+                    this.currentStatistic = statistic;
+                    this.statistics[bucketName] = statistic;
                 }, reason => {
-                    this.loading = false;
+                    this.statisticsLoading = false;
                 });
             }
         }
