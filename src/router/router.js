@@ -8,10 +8,11 @@ import Bucket from "../pages/bucket/Bucket";
 import Resource from "../pages/resource/Resource.vue";
 import Client from "../pages/client/Client";
 import Home from "../pages/home/Home";
+import Trash from "../pages/resource/Trash";
 
 Vue.use(Router);
 
-let getRoutes = function(){
+let getRoutes = function () {
     let user = JSON.parse(window.localStorage.getItem("currentUser"));
     user = user || {};
     return [
@@ -38,13 +39,13 @@ let getRoutes = function(){
                     name: '主页',
                     component: Home,
                     icon: 'none'
-                },{
+                }, {
                     path: '/client',
                     name: '服务器管理',
                     component: Client,
                     icon: 'none',
                     invisible: !user.isAdmin
-                },{
+                }, {
                     path: '/user',
                     name: '用户管理',
                     component: User,
@@ -54,6 +55,11 @@ let getRoutes = function(){
                     path: '/bucket',
                     name: '桶管理',
                     component: Bucket,
+                    icon: 'none'
+                }, {
+                    path: '/trash',
+                    name: '回收站',
+                    component: Trash,
                     icon: 'none'
                 }, {
                     path: '/resource',

@@ -159,20 +159,16 @@
                     this.charts.flow30Days = echarts.init(document.getElementById('flow30Days'));
                     this.charts.flow24Hours = echarts.init(document.getElementById('flow24Hours'));
                 }
-                this.updateChart('request', this.charts.request24Hours, '最近24小时内的请求', bucketName, 'hour', this.getRecentDay())
-                this.updateChart('flow', this.charts.flow24Hours, '最近24小时内的流量', bucketName, 'hour', this.getRecentDay())
-                this.updateChart('request', this.charts.request30Days, '最近30天内的请求', bucketName, 'day', this.getRecent30Days())
-                this.updateChart('flow', this.charts.flow30Days, '最近30天内的流量', bucketName, 'day', this.getRecent30Days())
+                this.updateChart('request', this.charts.request24Hours, '最近24小时内的请求', bucketName)
+                this.updateChart('flow', this.charts.flow24Hours, '最近24小时内的流量', bucketName)
+                this.updateChart('request', this.charts.request30Days, '最近30天内的请求', bucketName)
+                this.updateChart('flow', this.charts.flow30Days, '最近30天内的流量', bucketName)
             },
-            updateChart(busy, chart, title, bucketName, by, startDate) {
+            updateChart(busy, chart, title, bucketName) {
                 const id = chart._dom.id;
                 this.chartLoading[id] = true;
                 let isFlow = busy === 'flow';
-                this.$http.get(`/member/audit/chart/${busy}/${bucketName}/by/${by}`, {
-                    params: {
-                        startDate
-                    }
-                }).then(response => {
+                this.$http.get(`/member/audit/chart/${bucketName}/${id}`).then(response => {
                     const data = response.data.result;
                     let times = [];
                     let read = [];
