@@ -84,7 +84,8 @@
 									<img style="max-width:100px;max-height:100px;" :title="record.fileName"
 										 :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
 								</a>
-								<a v-else :href="`/mos/${currentBucket}${record.urlEncodePath}?render=true`"
+								<a v-else :href="getResourceUrl(record)"
+								   @click="onRecentClick(record)"
 								   target="_blank">
 									<img style="max-width:100px;max-height:100px;" :title="record.fileName"
 										 :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
@@ -106,7 +107,7 @@
 							</a>
 							<a :id="record.id" v-else
 							   :class="getResourceClass(record)"
-							   :href="`/mos/${currentBucket}${record.urlEncodePath}?render=true`"
+							   :href="getResourceUrl(record)"
 							   @click="onRecentClick(record)"
 							   target="_blank">
 								{{showDetailPath?record.path:record.fileName}}
@@ -641,7 +642,9 @@
             }
         },
         methods: {
-
+			getResourceUrl(record){
+                return record.signUrl ? record.signUrl : `/mos/${this.currentBucket}${record.urlEncodePath}?render=true`;
+			},
             onPressDown(target, dir) {
                 if (this.longPressTimer) {
                     clearTimeout(this.longPressTimer);

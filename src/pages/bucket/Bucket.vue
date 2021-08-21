@@ -305,9 +305,11 @@
                 }
             },
             fetchExpandedRow() {
-                this.$http.get("/member/access/" + this.expandedRow.bucketName).then(value => {
-                    this.innerData = value.data.result;
-                });
+                if(this.expandedRow && this.expandedRow.bucketName) {
+                    this.$http.get("/member/access/" + this.expandedRow.bucketName).then(value => {
+                        this.innerData = value.data.result;
+                    });
+                }
             },
             onAdd() {
                 this.form = {
