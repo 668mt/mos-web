@@ -83,10 +83,29 @@
         data() {
             return {
                 codeSrc: '/kaptcha',
-                needCode: false
+                needCode: false,
             }
         },
         methods: {
+            isMobile() {
+                var userAgentInfo = navigator.userAgent;
+                var mobileAgents = ["Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod"];
+                var mobile_flag = false;
+                //根据userAgent判断是否是手机
+                for (var v = 0; v < mobileAgents.length; v++) {
+                    if (userAgentInfo.indexOf(mobileAgents[v]) > 0) {
+                        mobile_flag = true;
+                        break;
+                    }
+                }
+                var screen_width = window.screen.width;
+                var screen_height = window.screen.height;
+                //根据屏幕分辨率判断是否是手机
+                if (screen_width < 500 && screen_height < 800) {
+                    mobile_flag = true;
+                }
+                return mobile_flag;
+            },
             changeCode() {
                 this.codeSrc = '/kaptcha?t=' + Math.random()
             },
@@ -112,9 +131,13 @@
                                 window.localStorage.setItem("currentUser", JSON.stringify(response.data.result));
                                 this.$message.success(response.data.message);
                                 this.refreshPerm();
-                                this.$router.replace({
-                                    path: '/home'
-                                })
+                                if (this.isMobile()) {
+                                    location.href = '/mobile';
+                                } else {
+                                    this.$router.replace({
+                                        path: '/home'
+                                    });
+                                }
                             } else {
                                 this.$message.error(response.data.message);
                                 this.checkNeedCode(values.username);
