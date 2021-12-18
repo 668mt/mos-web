@@ -710,7 +710,6 @@
                 })
             },
             onCopyOk() {
-                this.copying = true;
                 const selectRows = this.getSelectRecords();
                 const dirIds = selectRows.filter(value => value.isDir).map(item => item.id);
                 const resourceIds = selectRows.filter(value => !value.isDir).map(item => item.id);
@@ -723,6 +722,7 @@
                     this.$message.warn('不能复制到当前文件夹！');
                     return;
                 }
+                this.copying = true;
                 copyForm.dirIds = dirIds;
                 copyForm.resourceIds = resourceIds;
                 this.$http.post(`/member/resource/copy/${copyForm.srcBucketName}/to/${copyForm.desBucketName}`, copyForm).then(response => {
