@@ -34,7 +34,7 @@ Vue.config.productionTip = false;
 Vue.use(Antd);
 axios.defaults.withCredentials = true;
 axios.interceptors.response.use(response => {
-    if (response.data.status !== 'ok') {
+    if (response.data.status !== undefined && response.data.status !== 'ok') {
         Vue.prototype.$message.error(response.data.message);
         throw response.data.message;
     }
@@ -80,7 +80,7 @@ Vue.prototype.refreshPerm = function () {
     this.$http.get('/member/bucket/grant/perms/own').then(response => {
         let arr = response.data.result;
         $perms = {};
-        for(let vo of arr){
+        for (let vo of arr) {
             $perms[vo.bucketName] = vo.perms;
         }
     });
@@ -91,7 +91,7 @@ new Vue({
     store,
     render: h => h(App),
     mounted() {
-        if(this.$route.path !== '/signin'){
+        if (this.$route.path !== '/signin') {
             this.refreshPerm();
         }
     }

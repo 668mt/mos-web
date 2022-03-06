@@ -54,12 +54,12 @@ let deepClone = function (data) {
     return obj;
 }
 
-let contains = function(arr,item){
-    if(!arr){
+let contains = function (arr, item) {
+    if (!arr) {
         return false;
     }
-    for(let i=0;i<arr.length;i++){
-        if(arr[i] === item){
+    for (let i = 0; i < arr.length; i++) {
+        if (arr[i] === item) {
             return true;
         }
     }
@@ -67,5 +67,11 @@ let contains = function(arr,item){
 }
 
 module.exports = {
-    transformFormData, deepClone, deepCopy,contains
+    transformFormData, deepClone, deepCopy, contains,
+    isMobile: function () {
+        if (navigator.userAgent.match(/(iPhone|iPad|iPod|Android|ios)/i)) {
+            return true;
+        }
+        return false;
+    },
 }

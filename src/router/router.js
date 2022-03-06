@@ -69,6 +69,16 @@ let getRoutes = function () {
                 },]
             },]
         },
+        {
+            name: '资源可视',
+            path: '/viewer',
+            component: () => import('../layouts/RouteView'),
+            children: [{
+                name: '视频',
+                path: '/viewer/video',
+                component: () => import('../pages/viewer/VideoViewer.vue')
+            }]
+        }
     ];
 }
 

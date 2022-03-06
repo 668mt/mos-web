@@ -3,19 +3,25 @@
 		<a-row style="margin-bottom:10px;">
 			<div class="tool-btns">
 				<a-button type="primary" @click="onUpload" :disabled="!this.canInsert()">
-					{{uploading ? '查看上传进度' : '上传'}}
+					{{upload.uploading ? '查看上传进度' : '上传'}}
 				</a-button>
 				<a-button type="primary" @click="onEditDir()" :disabled="!this.canInsert()">
 					创建文件夹
 				</a-button>
-				<a-button type="primary" @click="onBatchDelete"
-						  :disabled="!this.canDelete() || this.selectedRowKeys.length === 0">
-					删除
-				</a-button>
-				<a-button type="primary" @click="onCopyToBucket"
-						  :disabled="!this.canSelect() || this.selectedRowKeys.length === 0">
-					复制
-				</a-button>
+				<a-dropdown>
+					<a-menu slot="overlay" @click="handleActionClick">
+						<a-menu-item key="copy" :disabled="!this.canSelect() || this.selectedRowKeys.length === 0">复制
+						</a-menu-item>
+						<a-menu-item key="move" :disabled="!this.canDelete() || this.selectedRowKeys.length === 0">移动
+						</a-menu-item>
+						<a-menu-item key="delete" :disabled="!this.canDelete() || this.selectedRowKeys.length === 0">
+							删除
+						</a-menu-item>
+					</a-menu>
+					<a-button type="primary">操作
+						<a-icon type="down"/>
+					</a-button>
+				</a-dropdown>
 				<a-input-search :placeholder="searchLocation === 'curr' ? '搜索当前位置' : '搜索所有位置'"
 								style="margin-left:15px;width: 300px" v-model="keyWord"
 								@search="onSearch()" @pressEnter="onSearch()">
@@ -74,30 +80,28 @@
 				</span>
 				<span v-else>
 					<!-- 文件 -->
-					<a-row>
-						<a-col :span="record.thumbFileHouseId ? 8:2" align="center">
+					<a-row type="flex" class="file">
+						<a-col :span="record.thumbFileHouseId ? 8:2" align="center" class="thumb">
 							<span v-if="record.thumbFileHouseId">
 								<a :id="record.id" v-if="record.image"
 								   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
 								   :class="getResourceClass(record)"
 								>
-									<img style="max-width:100px;max-height:100px;" :title="record.fileName"
-										 :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
+									<Thumb :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
 								</a>
 								<a v-else :href="getResourceUrl(record)"
 								   @click="onRecentClick(record)"
 								   target="_blank">
-									<img style="max-width:100px;max-height:100px;" :title="record.fileName"
-										 :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
+									<Thumb :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
 								</a>
 							</span>
 							<span v-else>
 								<icon-font class="resource-icon" v-if="record.icon" :type="record.icon"
-										   style="font-size:16px;"/>
-								<icon-font class="resource-icon" v-else type="icon-wenjian" style="font-size:16px;"/>
+										   style="font-size:16px;margin:0;"/>
+								<icon-font class="resource-icon" v-else type="icon-wenjian" style="font-size:16px;margin:0;"/>
 							</span>
 						</a-col>
-						<a-col span="16">
+						<a-col span="16" class="file-title">
 							<!-- 图片展示 -->
 							<a :id="record.id" v-if="record.image"
 							   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
@@ -157,94 +161,8 @@
 			</span>
 		</a-table>
 		<div>
-			<a-modal v-model="visible" title="上传" @ok="onUploadOk"
-					 okText="上传"
-					 :cancelText="uploading ? '切到后台' : '取消'"
-					 :confirmLoading="uploading"
-					 :maskClosable="false"
-					 :destroyOnClose="true"
-					 :width="800"
-			>
-					<span v-if="uploading || uploadProgress.errorMsg">
-						<span>（{{uploadProgress.fileIndex}}/{{uploadProgress.files}}）[{{uploadProgress.current}}] {{uploadProgress.errorMsg ? '上传失败：'+uploadProgress.errorMsg:'上传中...'}}</span>
-						<a-progress :percent="uploadProgress.uploadPercent"
-									:status="uploadProgress.errorMsg ? 'exception' : 'active'"/>
-					</span>
-				<a-row>
-					<a-col span="12">
-						<a-form :form="uploadForm">
-							<a-form-item v-bind="formItemLayout" label="桶">
-								<a-select v-decorator="['bucketName',{rules: [{required: true,message: '请选择桶',}],},]">
-									<a-select-option v-for="bucket in buckets" :key="bucket.id"
-													 :value="bucket.bucketName">
-										{{bucket.bucketName}}
-									</a-select-option>
-								</a-select>
-							</a-form-item>
-							<a-form-item v-bind="formItemLayout" label="是否覆盖">
-								<a-switch v-decorator="['cover']" @change="onCoverChange"/>
-							</a-form-item>
-							<a-form-item v-bind="formItemLayout" label="权限">
-								<a-radio-group v-decorator="['isPublic',{initialValue:false}]">
-									<a-radio :value="true">公开</a-radio>
-									<a-radio :value="false">私有</a-radio>
-								</a-radio-group>
-							</a-form-item>
-							<a-form-item v-bind="formItemLayout" label="响应头">
-								<a-auto-complete
-										v-decorator="['contentType']"
-										:data-source="contentTypeDataSource"
-										@search="onContentTypeSearch"
-								/>
-							</a-form-item>
-							<a-form-item v-bind="formItemLayout" label="文件/文件夹">
-								<a-radio-group v-model="uploadDirectory">
-									<a-radio :value="false">文件</a-radio>
-									<a-radio :value="true">文件夹</a-radio>
-								</a-radio-group>
-							</a-form-item>
-							<a-form-item v-bind="formItemLayout" label="选择">
-								<a-upload-dragger :file-list="fileList" :multiple="true" :remove="handleRemove"
-												  :directory="uploadDirectory"
-												  :showUploadList="false"
-												  :before-upload="beforeUpload">
-									<a-icon type="upload"/>
-									点击或拖动{{uploadDirectory ? '文件夹' : '文件'}}至此
-								</a-upload-dragger>
-							</a-form-item>
-						</a-form>
-					</a-col>
-					<a-col span="12">
-						<a-form :form="uploadForm">
-							<a-empty v-if="fileList.length <= 0" description="暂无文件上传"
-									 style="height:260px;margin-top: 140px"/>
-							<div v-else style="height:400px;overflow: auto" id="pathname-container">
-								<a-form-item v-bind="formItemLayout" v-for="(file,index) in fileList" :key="index"
-											 :label="`文件${index+1}`"
-											 :has-feedback="false">
-									<a-input-search
-											v-decorator="['pathnames['+index+']',{rules: [{required: true,message: '文件名必填'},{
-								    validator:checkPathname,
-								}],},]"
-											type="text"
-											@search="handleRemove(file)"
-									>
-										<a-button slot="enterButton" :disabled="uploading"
-												  style="background-color: #ffffff">
-											<a-icon v-if="file.status === 'uploading'" type="loading"/>
-											<a-icon v-else-if="file.status === 'done'" type="check-circle"
-													theme="filled" style="color:#52c41a"/>
-											<a-icon v-else-if="file.status === 'error'" type="close-circle"
-													theme="filled" style="color:#f5222d"/>
-											<a-icon v-else type="delete"/>
-										</a-button>
-									</a-input-search>
-								</a-form-item>
-							</div>
-						</a-form>
-					</a-col>
-				</a-row>
-			</a-modal>
+			<Upload ref="upload" :buckets="buckets" :current-bucket="currentBucket" :current-dir="currentDir"
+					@ok="reload"/>
 			<a-modal v-model="addrVisible" title="访问链详情" @ok="addrHandleOk" okText="生成">
 				<a-form-model
 						ref="addrForm"
@@ -327,34 +245,9 @@
 					</a-form-model-item>
 				</a-form-model>
 			</a-modal>
-			<a-modal v-model="copyVisible" title="复制选中文件" :confirmLoading="copying" @ok="onCopyOk"
-					 okText="确定">
-				<a-form-model
-						ref="copyForm"
-						:label-col="{span:6}"
-						:wrapper-col="{span:12}"
-						:model="copyForm">
-					<a-form-model-item label="从" prop="srcBucketName">
-						<a-input v-model="copyForm.srcBucketName" :disabled="true"/>
-					</a-form-model-item>
-					<a-form-model-item label="复制到" prop="desBucketName">
-						<a-select v-model="copyForm.desBucketName" @change="() => onCopyFormDesPathSearch(this.copyForm.desPath)">
-							<a-select-option v-for="bucket in copyBuckets" :key="bucket.id" :value="bucket.bucketName">
-								{{bucket.bucketName}}
-							</a-select-option>
-						</a-select>
-					</a-form-model-item>
-					<a-form-model-item label="目标路径" prop="desPath">
-						<a-auto-complete
-								v-model="copyForm.desPath"
-								:data-source="copyFormDesPaths"
-								@search="onCopyFormDesPathSearch"
-						/>
-						<!--						<a-input v-model="copyForm.desPath"/>-->
-					</a-form-model-item>
-				
-				</a-form-model>
-			</a-modal>
+			<Copy ref="copy" type="copy" :buckets="buckets" :current-dir="currentDir" :current-bucket="currentBucket"/>
+			<Copy ref="move" type="move" :buckets="buckets" :current-dir="currentDir" :current-bucket="currentBucket"
+				  @ok="reload"/>
 			<viewer :trigger="images" class="viewer" ref="viewer" @inited="inited">
 				<img style="display: none" v-for="image in images" :src="image.thumb" :origin="image.origin"
 					 :key="image.origin">
@@ -365,17 +258,20 @@
 <script>
     import {Icon} from 'ant-design-vue';
     import $ from 'jquery'
-    import resource from './resource'
+    import resource from './resource.js'
+    import Upload from './components/Upload'
+    import Copy from "./components/Copy";
+    import Thumb from "./components/Thumb";
 
     const columns = [
         {title: '文件名', dataIndex: 'name', width: 300, scopedSlots: {customRender: 'name'}, sorter: true},
         {title: '文件大小', dataIndex: 'readableSize', width: 120, sorter: true},
         {title: '权限', dataIndex: 'isPublic', width: 120, scopedSlots: {customRender: 'isPublic'}, sorter: true},
-        {title: '响应头', dataIndex: 'contentType', width: 200},
         {title: '访问量', dataIndex: 'visits', width: 100, scopedSlots: {customRender: 'visits'}, sorter: true},
         {title: '修改时间', dataIndex: 'updatedDate', width: 160, sorter: true},
         {title: '修改人', dataIndex: 'updatedBy', width: 120, sorter: true},
-        {title: '操作', width: 220, scopedSlots: {customRender: 'action'},},
+        {title: '响应头', dataIndex: 'contentType', width: 200},
+        {title: '操作', width: 220, scopedSlots: {customRender: 'action'}, fixed: 'right'},
     ];
 
     const IconFont = Icon.createFromIconfontCN({
@@ -383,9 +279,14 @@
     });
 
     export default {
+        components: {
+            Thumb,
+            Copy,
+            IconFont, Upload
+        },
         data() {
             return {
-                uploadDirectory: false,
+                upload: {},
                 editDirVisible: false,
                 editDirForm: {
                     parentPath: '',
@@ -398,24 +299,6 @@
                 },
                 images: [],
                 searchLocation: 'curr',
-                pathnameCheckResults: [],
-                checkPathname: (rule, value, callback) => {
-                    if (value === '') {
-                        callback();
-                    }
-                    // if (/[\\[:\]*?"<>|,]/.test(value)) {
-                    //     callback(new Error('资源名不能包含: * ? " < > | [ ],'));
-                    // }
-                    if (this.cover) {
-                        callback();
-                    }
-                    const result = this.pathnameCheckResults[value];
-                    if (result) {
-                        callback(new Error('资源已存在'));
-                    } else {
-                        callback();
-                    }
-                },
                 lastDir: null,
                 parentDirs: [],
                 currentBucket: null,
@@ -433,8 +316,6 @@
                         return '数据总数：' + total;
                     }
                 },
-                visible: false,
-                uploadForm: null,
                 keyWord: '',
                 rules: {
                     bucketName: [
@@ -442,28 +323,9 @@
                     ],
                 },
                 buckets: [],
-                fileList: [],
-                formItemLayout: {
-                    labelCol: {
-                        xs: {span: 24},
-                        sm: {span: 6},
-                    },
-                    wrapperCol: {
-                        xs: {span: 24},
-                        sm: {span: 18},
-                    },
-                },
-                uploading: false,
-                uploadProgress: {
-                    current: '',
-                    fileIndex: 1,
-                    files: 1,
-                    uploadPercent: 0,
-                },
                 saving: false,
                 selectedRowKeys: [],
                 addrVisible: false,
-                cover: false,
                 addrForm: {
                     signUrl: '',
                     openId: null,
@@ -506,19 +368,9 @@
                 historyClicks: [],
                 refreshed: true,
                 tableLoading: false,
-                copyForm: {
-                    srcBucketName: null,
-                    desBucketName: null,
-                    dirIds: null,
-                    resourceIds: null,
-                    desPath: null
-                },
-                copyVisible: false,
-                copyBuckets: [],
-                copyFormDesPaths: [],
-                copying: false,
                 showDetailPath: false,
-                longPressTimer: null
+                longPressTimer: null,
+                fileSuffix: {}
             };
         },
         computed: {
@@ -561,6 +413,9 @@
             window.removeEventListener("popstate", resource.popHandler);
         },
         mounted() {
+            this.$nextTick().then(value => {
+                this.upload = this.$refs.upload;
+            });
             resource.setThat(this);
             window.addEventListener("popstate", resource.popHandler, false);
             const queryParams = this.$route.query;
@@ -590,10 +445,12 @@
                     this.searchLocation = queryParams.l;
                 }
             }
+            this.$http.get('/member/resource/file/suffix').then(value => {
+                this.fileSuffix = value.data;
+            });
             resource.fetchBucket();
             this.contentTypeDataSource = [...this.allContentTypes];
             $(".ant-table-body").css("overflow-x", "auto");
-
         },
         watch: {
             "addrForm.expireNumber"() {
@@ -642,9 +499,32 @@
             }
         },
         methods: {
-			getResourceUrl(record){
+            handleActionClick(e) {
+                switch (e.key) {
+                    case 'delete':
+                        this.onBatchDelete();
+                        break;
+                    case 'copy':
+                        this.onCopyToBucket();
+                        break;
+                    case 'move':
+                        this.onMoveToBucket();
+                        break;
+                }
+            },
+            onMoveToBucket() {
+                this.$refs.move.onCopyToBucket(this.getSelectRecords());
+            },
+            getResourceUrl(record) {
+                let videoSuffix = this.fileSuffix.video;
+                let fileName = record.fileName;
+                for (let item of videoSuffix) {
+                    if (fileName.endsWith(item)) {
+                        return `/viewer/video?bucket=${this.currentBucket}&id=${record.id}&path=${this.currentDir.path}`;
+                    }
+                }
                 return record.signUrl ? record.signUrl : `/mos/${this.currentBucket}${record.urlEncodePath}?render=true`;
-			},
+            },
             onPressDown(target, dir) {
                 if (this.longPressTimer) {
                     clearTimeout(this.longPressTimer);
@@ -674,62 +554,8 @@
             canDelete() {
                 return this.hasPerm(this.currentBucket, 'DELETE');
             },
-            //复制
             onCopyToBucket() {
-                this.copyBuckets = this.buckets;
-                this.copyForm = {
-                    srcBucketName: this.currentBucket,
-                    desBucketName: this.copyBuckets.length > 0 ? this.copyBuckets[0].bucketName : null,
-                    dirIds: null,
-                    resourceIds: null,
-                    desPath: this.currentDir.path
-                };
-                this.copyFormDesPaths = [];
-                this.onCopyFormDesPathSearch(this.currentDir.path);
-                this.copyVisible = true;
-            },
-            onCopyFormDesPathSearch(path) {
-                if(!path){
-                    path = this.copyForm.desPath;
-				}
-                let bucketName = this.copyForm.desBucketName;
-                if (!bucketName) {
-                    return;
-                }
-                const selectRows = this.getSelectRecords();
-                const dirIds = selectRows.filter(value => value.isDir).map(item => item.id);
-                const currentDirId = this.currentDir.id;
-                this.$http.get(`/member/dir/${bucketName}/select`, {
-                    params: {
-                        path: path
-                    }
-                }).then(response => {
-                    this.copyFormDesPaths = response.data.result
-                        .filter(dir => !this.$mt.contains(dirIds, dir.id) && dir.id !== currentDirId)
-                        .map(dir => dir.path);
-                })
-            },
-            onCopyOk() {
-                const selectRows = this.getSelectRecords();
-                const dirIds = selectRows.filter(value => value.isDir).map(item => item.id);
-                const resourceIds = selectRows.filter(value => !value.isDir).map(item => item.id);
-                let copyForm = this.copyForm;
-                if (!copyForm.desBucketName) {
-                    this.$message.warn('请选择目标桶！');
-                    return;
-                }
-                if (copyForm.desBucketName === this.currentBucket && copyForm.desPath === this.currentDir.path) {
-                    this.$message.warn('不能复制到当前文件夹！');
-                    return;
-                }
-                this.copying = true;
-                copyForm.dirIds = dirIds;
-                copyForm.resourceIds = resourceIds;
-                this.$http.post(`/member/resource/copy/${copyForm.srcBucketName}/to/${copyForm.desBucketName}`, copyForm).then(response => {
-                    this.$message.success('复制成功！');
-                    this.copyVisible = false;
-                    this.copying = false;
-                }, reason => this.copying = false)
+                this.$refs.copy.onCopyToBucket(this.getSelectRecords());
             },
             onEditDir(record) {
                 this.editDirVisible = true;
@@ -1084,140 +910,6 @@
                 }
                 return sizeByte.toFixed(3) + unit;
             },
-            //点击上传按钮
-            onUpload() {
-                if (!this.currentBucket) {
-                    this.$message.warn("您还没有桶，请先去创建一个吧");
-                    return;
-                }
-                if (!this.uploading) {
-                    this.pathnameCheckResults = [];
-                    this.uploadDirectory = false;
-                    this.uploadForm = this.$form.createForm(this, {name: 'register'});
-                    resource.initUploadProgress();
-                    this.$nextTick().then(value => {
-                        this.uploadForm.setFieldsValue({
-                            bucketName: this.currentBucket,
-                            pathnames: []
-                        });
-                    });
-                    this.cover = false;
-                    this.uploadPercent = 0;
-                    this.fileList = [];
-                    this.uploadingData = {};
-                } else {
-                    this.$nextTick().then(value => {
-                        this.uploadForm.setFieldsValue(this.uploadingData);
-                    });
-                }
-                this.visible = true;
-            },
-            beforeUpload(file) {
-                const pathname = this.getUploadPathname(file);
-                for (let f of this.fileList) {
-                    const existedPathname = this.getUploadPathname(f);
-                    if (existedPathname === pathname) {
-                        return false;
-                    }
-                }
-                this.fileList.push(file);
-                let obj = {};
-                let key = `pathnames[${this.fileList.length - 1}]`;
-                obj[key] = pathname;
-                this.$nextTick().then(value => {
-                    this.uploadForm.setFieldsValue(obj);
-                    this.uploadForm.validateFields([key]);
-                })
-                return false;
-            },
-            handleRemove(file) {
-                if (this.uploading) {
-                    return;
-                }
-                const index = this.fileList.indexOf(file);
-                const newFileList = this.fileList.slice();
-                newFileList.splice(index, 1);
-                const pathnames = this.uploadForm.getFieldValue('pathnames');
-                const newPathnames = pathnames.slice();
-                newPathnames.splice(index, 1);
-                const errorPathnames = this.uploadForm.getFieldsError().pathnames;
-                const newErrorPathnames = errorPathnames.slice();
-                newErrorPathnames.splice(index, 1);
-                this.uploadForm.setFieldsValue({
-                    "pathnames": newPathnames
-                });
-                for (let i = 0; i < newErrorPathnames.length; i++) {
-                    if (newErrorPathnames[i]) {
-                        this.uploadForm.validateFields([`pathnames[${i}]`]);
-                    }
-                }
-                this.fileList = newFileList;
-            },
-            //文件上传
-            onUploadOk(e) {
-                if (this.fileList.length === 0) {
-                    this.$message.warn('请先选择要上传的文件！');
-                    return;
-                }
-                this.$http.post(`/member/resource/${this.currentBucket}/checkFile/isExists`, {
-                    pathnames: this.uploadForm.getFieldValue("pathnames")
-                }).then(response => {
-                    this.pathnameCheckResults = response.data.result.checkResults;
-                    this.uploadForm.validateFieldsAndScroll({
-                        force: true
-                    }, (err, values) => {
-                        if (!err) {
-                            this.uploadingData = values;
-                            const pathnames = values.pathnames;
-                            const bucketName = values.bucketName;
-                            const cover = values.cover === undefined ? false : values.cover;
-                            const isPublic = values.isPublic === undefined ? false : values.isPublic;
-                            const contentType = values.contentType === undefined ? '' : values.contentType;
-                            resource.initUploadProgress();
-                            resource.uploadFile(this.fileList, 0, bucketName, pathnames, cover, isPublic, contentType, () => {
-                                this.uploading = false;
-                                this.$message.success("上传完成!");
-                                this.visible = false;
-                                this.reload();
-                            });
-                        } else {
-                            let errorField = null;
-                            let num = 0;
-                            for (let index in err.pathnames) {
-                                num = index;
-                                errorField = err.pathnames[index].errors[0].field;
-                                // const pathname = this.values.getFieldValue(errorField);
-                                // this.$message.warn(err.pathnames[index].errors[0].message + ":" + pathname)
-                                break;
-                            }
-                            $("#pathname-container").animate({
-                                scrollTop: num * 40
-                            }, 500);
-                        }
-                    });
-                });
-            },
-            getUploadPathname(file) {
-                const webkitRelativePath = file.webkitRelativePath;
-                let name = file.name;
-                if (webkitRelativePath) {
-                    name = webkitRelativePath;
-                }
-
-                let pathname;
-                if (this.currentDir.path === '/') {
-                    pathname = this.currentDir.path + name;
-                } else {
-                    pathname = this.currentDir.path + '/' + name;
-                }
-                return pathname;
-            },
-            onCoverChange(cover) {
-                this.cover = cover;
-                this.uploadForm.validateFields({
-                    force: true
-                });
-            },
             onEditResource(record) {
                 this.saving = false;
                 this.editForm = {...record}
@@ -1238,46 +930,13 @@
             },
             onContentTypeSearch(searchText) {
                 this.contentTypeDataSource = this.allContentTypes.filter(value => value.indexOf(searchText) !== -1);
+            },
+            onUpload() {
+                this.$refs.upload.onUpload();
             }
         },
-        components: {
-            IconFont
-            // ,Viewer
-        }
     };
 </script>
-<style scoped>
-	a.resource-link {
-		color: #333;
-	}
-	
-	a.resource-link:hover {
-		color: #777;
-	}
-	
-	a.resource-link.activeAnchor {
-		color: #40a9ff;
-		/*color: #52c41a;*/
-	}
-	
-	.resource-icon {
-		margin-right: 8px;
-	}
-	
-	
-	.path {
-		margin-right: 15px;
-	}
-	
-	.path.current {
-		color: gray;
-	}
-	
-	.tool-btns button {
-		margin-left: 15px;
-	}
-	
-	.ant-table-body {
-		overflow: auto;
-	}
+<style scoped type="less">
+	@import "resource.less";
 </style>
