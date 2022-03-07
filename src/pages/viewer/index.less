@@ -11,20 +11,30 @@
   //position: absolute;
   //display: block;
   margin: 0;
-  padding: 20px;
+}
+
+@media screen and (max-width: 768px) {
+  .video-block {
+    padding: 10px;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .video-block {
+    padding: 20px;
+  }
+  .video-list .list-item:hover {
+    background: #eee;
+    cursor: pointer;
+  }
 }
 
 .video-list .list-item {
-  padding: 5px;
+  //padding: 5px;
 }
 
 .video-list .list-item.active {
   background: #eee;
-}
-
-.video-list .list-item:hover {
-  background: #eee;
-  cursor: pointer;
 }
 
 .span-desc {
@@ -35,6 +45,7 @@
 .space *:not(:first-child) {
   margin-left: 10px;
 }
+
 .demo-loading-container {
   position: absolute;
   bottom: 40px;

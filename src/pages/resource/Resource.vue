@@ -62,7 +62,7 @@
 		<a-table :columns="columns" :data-source="data" :pagination="pagination"
 				 :row-selection="rowSelection"
 				 :rowKey="(row) => {return (row.isDir?'dir-':'resource-')+row.id}"
-				 :scroll="{ x: 1500 }"
+				 :scroll="{ x: 1200 }"
 				 :loading="tableLoading"
 				 @change="handleTableChange">
 			<span slot="name" slot-scope="text,record">
@@ -265,13 +265,13 @@
 
     const columns = [
         {title: '文件名', dataIndex: 'name', width: 300, scopedSlots: {customRender: 'name'}, sorter: true},
-        {title: '文件大小', dataIndex: 'readableSize', width: 120, sorter: true},
-        {title: '权限', dataIndex: 'isPublic', width: 120, scopedSlots: {customRender: 'isPublic'}, sorter: true},
-        {title: '访问量', dataIndex: 'visits', width: 100, scopedSlots: {customRender: 'visits'}, sorter: true},
-        {title: '修改时间', dataIndex: 'updatedDate', width: 160, sorter: true},
+        {title: '文件大小', dataIndex: 'readableSize', width: 100, sorter: true},
+        {title: '权限', dataIndex: 'isPublic', width: 80, scopedSlots: {customRender: 'isPublic'}, sorter: true},
+        {title: '访问量', dataIndex: 'visits', width: 80, scopedSlots: {customRender: 'visits'}, sorter: true},
+        {title: '修改时间', dataIndex: 'updatedDate', width: 150, sorter: true},
         {title: '修改人', dataIndex: 'updatedBy', width: 120, sorter: true},
-        {title: '响应头', dataIndex: 'contentType', width: 200},
-        {title: '操作', width: 220, scopedSlots: {customRender: 'action'}, fixed: 'right'},
+        // {title: '响应头', dataIndex: 'contentType', width: 100},
+        {title: '操作', width: 250, scopedSlots: {customRender: 'action'}},
     ];
 
     const IconFont = Icon.createFromIconfontCN({

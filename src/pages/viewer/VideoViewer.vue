@@ -1,10 +1,17 @@
+<!--suppress XmlDuplicatedId -->
 <template>
 	<div class="video-block">
 		<a-row type="flex">
-			<a-col :xs="{span:24}" :sm="{span:16}" style="padding-right: 5px;">
-				<div id="videoContainer" style="width: 100%;height:100%;" class="player">
+			<a-col :sm="{span:24}" :md="{span:16}" style="padding-right: 5px;">
+				<a-affix v-if="isMobile">
+					<div id="videoContainer" style="width: 100%;height:100%;" class="player">
+						<video></video>
+					</div>
+				</a-affix>
+				<div v-else id="videoContainer" style="width: 100%;height:100%;" class="player">
 					<video></video>
 				</div>
+				
 				<div style="padding:10px;" v-if="active">
 					<h4>{{active.fileName}}</h4>
 					<div class="space">
@@ -14,7 +21,7 @@
 					</div>
 				</div>
 			</a-col>
-			<a-col :xs="{span:24}" :sm="{span:8}" style="color:#fff;">
+			<a-col :sm="{span:24}" :md="{span:8}" style="color:#fff;">
 				<div>
 					<div style="border:1px solid #ccc;overflow-y: auto;overflow-x:hidden;" class="video-list-container"
 						 ref="container">
@@ -49,8 +56,8 @@
 											</div>
 										</div>
 										<div slot="avatar"
-											 style="padding-left: 20px;position: relative;font-size: 12px;">
-											<div style="position: absolute;left: 0;font-size: 12px;width: 15px;text-align: center;line-height: 65px;color:#000;">
+											 style="padding-left: 25px;position: relative;font-size: 12px;">
+											<div style="position: absolute;left: 0;font-size: 12px;width: 25px;text-align: center;line-height: 65px;color:#000;">
 												{{index+1}}
 											</div>
 											<Thumb style="width:110px;height:65px;"
@@ -86,7 +93,7 @@
                 page: {},
                 active: undefined,
                 loading: false,
-                pageSize: 100
+                pageSize: 50
             }
         },
         mounted() {
@@ -127,7 +134,9 @@
                 if (!mt.isMobile()) {
                     $(".video-list-container").css("height", height + 'px');
                     // $(".video-list-container").css("height", '100%');
-                }
+                }else{
+                    $(".video-list-container").css("height", '800px');
+				}
                 // $videoContainer.css("margin-top", marginTop + 'px');
             },
             handleInfiniteOnLoad() {
@@ -178,13 +187,17 @@
                 this.active = data;
                 // let url = `/mos/${this.query.bucket}${data.urlEncodePath}`;
                 let url = data.signUrl;
-                url = url.replaceAll('render=true', 'render=false');
+                url = url.replace('render=true', 'render=false');
+                url = url.replace('localhost', '192.168.0.174');
                 let index = url.indexOf("?");
                 // this.playVideo('http://' + encodeURIComponent(url.substring(0, index)) + url.substring(index));
                 this.playVideo(encodeURIComponent(url.substring(0, index)) + url.substring(index));
-                history.pushState({}, data.fileName, `/viewer/video?id=${data.id}&bucket=${this.query.bucket}&path=${encodeURIComponent(this.query.path)}`);
+                if (!this.isMobile) {
+                    history.pushState({}, data.fileName, `/viewer/video?id=${data.id}&bucket=${this.query.bucket}&path=${encodeURIComponent(this.query.path)}`);
+                }
             },
             play(url, html5m3u8) {
+                let vol = mt.getCookie('vol');
                 let videoObject = {
                     container: '#videoContainer',//“#”代表容器的ID，“.”或“”代表容器的class
                     variable: 'player',//该属性必需设置，值等于下面的new chplayer()的对象
@@ -196,14 +209,16 @@
                     // autoplay: true,
                     loaded: (player) => {
                         player.videoPlay();
-                        // player.addListener('volume', vol => {
-                        //     console.log(vol)
-                        // });
+                        player.addListener('volume', vol => {
+                            mt.setCookie('vol', vol, 30);
+                        });
                     },
-                    volume: 0.5
+                    volume: vol !== null ? vol : 0.5
                 };
                 if (player) {
-                    player.newVideo({autoplay: true, video: decodeURIComponent(url)});
+                    videoObject.video = decodeURIComponent(url);
+                    videoObject.autoplay = true;
+                    player.newVideo(videoObject);
                 } else {
                     player = new ckplayer(videoObject);
                     player.addListener('ended', v => {
@@ -227,6 +242,9 @@
             },
         },
         computed: {
+            isMobile() {
+                return mt.isMobile();
+            },
             currentPlayIndex() {
                 if (this.page && this.page.list && this.active) {
                     for (let i = 0; i < this.page.list.length; i++) {
@@ -248,4 +266,18 @@
 
 <style scoped type="less">
 	@import "index.less";
+	/*@media screen and (max-width: 575.98px) {*/
+	/*	.video-block {*/
+	/*		padding: 10px;*/
+	/*	}*/
+	/*}*/
+	/*@media screen and (min-width: 576px) {*/
+	/*	.video-block {*/
+	/*		padding: 20px;*/
+	/*	}*/
+	/*	.video-list .list-item:hover {*/
+	/*		background: #eee;*/
+	/*		cursor: pointer;*/
+	/*	}*/
+	/*}*/
 </style>
