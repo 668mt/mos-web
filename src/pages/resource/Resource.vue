@@ -5,7 +5,7 @@
 				<a-button type="primary" @click="onUpload" :disabled="!this.canInsert()">
 					{{upload.uploading ? '查看上传进度' : '上传'}}
 				</a-button>
-				<a-button type="primary" @click="onEditDir()" :disabled="!this.canInsert()">
+				<a-button type="primary" @click="onAddDir" :disabled="!this.canInsert()">
 					创建文件夹
 				</a-button>
 				<a-dropdown>
@@ -49,6 +49,11 @@
 			<a style="margin-left: 10px;" @click="reload">
 				<a-icon type="sync"/>
 			</a>
+			<!--			<a class="listType" style="margin-left: 10px;" @click="changeListType">-->
+			<!--				<IconFont v-if="listType === 'list'" type="icon-liebiao"-->
+			<!--						  mode="font-class"/>-->
+			<!--				<IconFont v-else type="icon-xiaosuolvetu" mode="font-class"/>-->
+			<!--			</a>-->
 			<!-- 父路径 -->
 			<span v-if="parentDirs.length > 0">
 				<a style="margin-left:10px;" class="dir-nav" v-for="dir in parentDirs" :key="dir.path"
@@ -59,66 +64,21 @@
 				{{currentDir.path}}
 			</span>
 		</div>
-		<a-table :columns="columns" :data-source="data" :pagination="pagination"
+		<a-table :columns="columns" :data-source="dataSource" :pagination="pagination"
 				 :row-selection="rowSelection"
 				 :rowKey="(row) => {return (row.isDir?'dir-':'resource-')+row.id}"
 				 :scroll="{ x: 1200 }"
 				 :loading="tableLoading"
 				 @change="handleTableChange">
 			<span slot="name" slot-scope="text,record">
-				<span v-if="record.isDir">
-					<!-- 文件夹 -->
-					<icon-font class="resource-icon" type="icon-weibiaoti-_huabanfuben" style="font-size:18px;"/>
-					<a :id="record.id" :class="getResourceClass(record)" @click="changeCurrentPath(record)"
-					   @touchstart="onPressDown('_self',record)"
-					   @touchend="onPressUp(record)"
-					   @mousedown="onPressDown('_blank',record)"
-					   @mouseup="onPressUp(record)"
-					>
-						{{showDetailPath?record.path:('/'+record.fileName)}}
-					</a>
-				</span>
-				<span v-else>
-					<!-- 文件 -->
-					<a-row type="flex" class="file">
-						<a-col :span="record.thumbFileHouseId ? 8:2" align="center" class="thumb">
-							<span v-if="record.thumbFileHouseId">
-								<a :id="record.id" v-if="record.image"
-								   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
-								   :class="getResourceClass(record)"
-								>
-									<Thumb :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
-								</a>
-								<a v-else :href="getResourceUrl(record)"
-								   @click="onRecentClick(record)"
-								   target="_blank">
-									<Thumb :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
-								</a>
-							</span>
-							<span v-else>
-								<icon-font class="resource-icon" v-if="record.icon" :type="record.icon"
-										   style="font-size:16px;margin:0;"/>
-								<icon-font class="resource-icon" v-else type="icon-wenjian" style="font-size:16px;margin:0;"/>
-							</span>
-						</a-col>
-						<a-col span="16" class="file-title">
-							<!-- 图片展示 -->
-							<a :id="record.id" v-if="record.image"
-							   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
-							   :class="getResourceClass(record)"
-							>
-								{{showDetailPath?record.path:record.fileName}}
-							</a>
-							<a :id="record.id" v-else
-							   :class="getResourceClass(record)"
-							   :href="getResourceUrl(record)"
-							   @click="onRecentClick(record)"
-							   target="_blank">
-								{{showDetailPath?record.path:record.fileName}}
-							</a>
-						</a-col>
-					</a-row>
-				</span>
+				<ListName :record="record" :current-bucket="currentBucket" :show-detail-path="showDetailPath"
+						  :current-dir="currentDir"
+						  :historyClicks="historyClicks"
+						  :fileSuffix="fileSuffix"
+						  :show-images="showImages"
+						  :on-recent-click="onRecentClick"
+						  :change-current-path="changeCurrentPath"
+				/>
 			</span>
 			<span slot="isPublic" slot-scope="text,record">
 				<span v-if="!record.isDir">
@@ -157,94 +117,18 @@
 				<span v-else>
 					<a-divider type="vertical"/>
 					<a :href="`/mos/${currentBucket}${record.urlEncodePath}?gallary=true`" target="_blank">图集</a>
+<!--					<a-divider type="vertical"/>-->
+<!--					<a :href="`/viewer/photo?bucket=${currentBucket}&path=${record.path}`" target="_blank">相册</a>-->
 				</span>
 			</span>
 		</a-table>
 		<div>
 			<Upload ref="upload" :buckets="buckets" :current-bucket="currentBucket" :current-dir="currentDir"
 					@ok="reload"/>
-			<a-modal v-model="addrVisible" title="访问链详情" @ok="addrHandleOk" okText="生成">
-				<a-form-model
-						ref="addrForm"
-						:label-col="{span:6}"
-						:wrapper-col="{span:12}"
-						:model="addrForm">
-					<a-form-model-item label="秘钥">
-						<a-select v-model="addrForm.openId">
-							<a-select-option v-for="row in openIds" :key="row.openId" :value="row.openId">{{row.useInfo
-								? row.useInfo : row.openId}}
-							</a-select-option>
-						</a-select>
-					</a-form-model-item>
-					<a-form-model-item label="桶" prop="bucketName">
-						<a-input v-model="addrForm.bucketName" disabled/>
-					</a-form-model-item>
-					<a-form-model-item label="文件" prop="fileName">
-						<a-input v-model="addrForm.fileName" disabled/>
-					</a-form-model-item>
-					<a-form-model-item label="有效时间" prop="expireNumber">
-						<a-input :min="1" :disabled="addrForm.isPublic || addrForm.expireUnit==='ever'"
-								 type="number" v-model="addrForm.expireNumber" style="width: 100%">
-							<a-select :disabled="addrForm.isPublic" slot="addonAfter" v-model="addrForm.expireUnit"
-									  style="width: 70px"
-									  @change="onExpireUnitChange">
-								<a-select-option value="minute">分钟</a-select-option>
-								<a-select-option value="hour">小时</a-select-option>
-								<a-select-option value="day">天</a-select-option>
-								<a-select-option value="month">月</a-select-option>
-								<a-select-option value="year">年</a-select-option>
-								<a-select-option value="ever">永久</a-select-option>
-							</a-select>
-						</a-input>
-					</a-form-model-item>
-					<a-form-model-item label="是否使用渲染器" prop="render">
-						<a-switch v-model="addrForm.render"></a-switch>
-					</a-form-model-item>
-					<a-form-model-item label="访问链" prop="signUrl">
-						<a-input v-model="addrForm.signUrl" type="textarea" style="height: 200px;"/>
-					</a-form-model-item>
-				</a-form-model>
-			</a-modal>
-			<a-modal v-model="editVisible" title="资源详情" :confirmLoading="saving" @ok="editHandleOk" okText="保存">
-				<a-form-model
-						ref="editForm"
-						:rules="editRules"
-						:label-col="{span:6}"
-						:wrapper-col="{span:12}"
-						:model="editForm">
-					<a-form-model-item label="资源名" prop="pathname">
-						<a-input v-model="editForm.pathname" @pressEnter="editHandleOk"/>
-					</a-form-model-item>
-					<a-form-model-item label="权限" prop="isPublic">
-						<a-radio-group v-model="editForm.isPublic">
-							<a-radio :value="true">公开</a-radio>
-							<a-radio :value="false">私有</a-radio>
-						</a-radio-group>
-					</a-form-model-item>
-					<a-form-model-item label="响应头" prop="contentType">
-						<a-auto-complete
-								v-model="editForm.contentType"
-								:data-source="contentTypeDataSource"
-								@search="onContentTypeSearch"
-						/>
-					</a-form-model-item>
-				</a-form-model>
-			</a-modal>
-			<a-modal v-model="editDirVisible" title="路径详情" :confirmLoading="editDirSaving" @ok="onEditDirOk"
-					 okText="保存">
-				<a-form-model
-						ref="editDirForm"
-						:label-col="{span:6}"
-						:wrapper-col="{span:12}"
-						:model="editDirForm">
-					<a-form-model-item label="父路径" prop="path">
-						<a-input v-model="editDirForm.parentPath" @pressEnter="onEditDirOk"/>
-					</a-form-model-item>
-					<a-form-model-item label="名称" prop="name">
-						<a-input ref="editDirName" v-model="editDirForm.name" @pressEnter="onEditDirOk"/>
-					</a-form-model-item>
-				</a-form-model>
-			</a-modal>
+			<AddrModal ref="addrModal" :buckets="buckets" :current-bucket="currentBucket" :current-dir="currentDir"/>
+			<ResourceModal ref="resourceModal" :buckets="buckets" :current-bucket="currentBucket"
+						   :current-dir="currentDir" @ok="reload"/>
+			<DirModal ref="dirModal" :current-bucket="currentBucket" :currentDir="currentDir" @ok="reload"/>
 			<Copy ref="copy" type="copy" :buckets="buckets" :current-dir="currentDir" :current-bucket="currentBucket"/>
 			<Copy ref="move" type="move" :buckets="buckets" :current-dir="currentDir" :current-bucket="currentBucket"
 				  @ok="reload"/>
@@ -256,12 +140,14 @@
 	</a-card>
 </template>
 <script>
-    import {Icon} from 'ant-design-vue';
     import $ from 'jquery'
     import resource from './resource.js'
     import Upload from './components/Upload'
     import Copy from "./components/Copy";
-    import Thumb from "./components/Thumb";
+    import DirModal from "./components/DirModal";
+    import AddrModal from "./components/AddrModal";
+    import ResourceModal from "./components/ResourceModal";
+    import ListName from "./components/ListName";
 
     const columns = [
         {title: '文件名', dataIndex: 'name', width: 300, scopedSlots: {customRender: 'name'}, sorter: true},
@@ -271,28 +157,22 @@
         {title: '修改时间', dataIndex: 'updatedDate', width: 150, sorter: true},
         {title: '修改人', dataIndex: 'updatedBy', width: 120, sorter: true},
         // {title: '响应头', dataIndex: 'contentType', width: 100},
-        {title: '操作', width: 250, scopedSlots: {customRender: 'action'}},
+        {title: '操作', fixed2: 'right', width: 250, scopedSlots: {customRender: 'action'}},
     ];
-
-    const IconFont = Icon.createFromIconfontCN({
-        scriptUrl: '//at.alicdn.com/t/font_1836787_2a565rchgum.js',
-    });
 
     export default {
         components: {
-            Thumb,
+            ListName,
+            ResourceModal,
+            AddrModal,
+            DirModal,
             Copy,
-            IconFont, Upload
+            Upload
         },
         data() {
             return {
+                listType: 'list',
                 upload: {},
-                editDirVisible: false,
-                editDirForm: {
-                    parentPath: '',
-                    name: ''
-                },
-                editDirSaving: false,
                 locations: {
                     lastLocation: [],
                     current: {}
@@ -306,7 +186,7 @@
                     path: '/',
                     urlEncodePath: '/'
                 },
-                data: [],
+                dataSource: [],
                 columns,
                 pagination: {
                     pageSizeOptions: ['10', '20', '50', '100'],
@@ -317,42 +197,8 @@
                     }
                 },
                 keyWord: '',
-                rules: {
-                    bucketName: [
-                        {required: true, message: '请选择bucket', trigger: 'blur'},
-                    ],
-                },
                 buckets: [],
-                saving: false,
                 selectedRowKeys: [],
-                addrVisible: false,
-                addrForm: {
-                    signUrl: '',
-                    openId: null,
-                    resourceId: null,
-                    expireSeconds: 3600,
-                    bucketId: null,
-                    expireNumber: 2,
-                    expireUnit: 'hour',
-                    render: false
-                },
-                openIds: [],
-                editVisible: false,
-                editForm: {
-                    pathname: null,
-                    isPublic: false,
-                    contentType: null
-                },
-                editRules: {
-                    // pathname: [{required: true, message: '请输入资源名', trigger: 'blur'}],
-                },
-                allContentTypes: [
-                    'text/html;charset=UTF-8', 'text/xml;charset=UTF-8', 'text/plain;charset=UTF-8', 'application/json;charset=UTF-8', 'application/octet-stream',
-                    'application/pdf', 'text/markdown;charset=UTF-8', 'text/event-stream;charset=UTF-8',
-                    'image/png', 'image/jpeg', 'image/gif', 'application/xml', 'application/xhtml+xml', 'application/stream+json',
-                    'application/rss+xml', 'application/problem+xml', 'application/problem+json;charset=UTF-8', 'application/problem+json'
-                ],
-                contentTypeDataSource: [],
                 sortField: null,
                 sortOrder: null,
                 queryAlias: {
@@ -388,7 +234,7 @@
                             onSelect: changableRowKeys => {
                                 let newSelectedRowKeys = [];
                                 newSelectedRowKeys = changableRowKeys.filter((key, index) => {
-                                    return this.data[index].isDir;
+                                    return this.dataSource[index].isDir;
                                 });
                                 this.selectedRowKeys = newSelectedRowKeys;
                             },
@@ -399,7 +245,7 @@
                             onSelect: changableRowKeys => {
                                 let newSelectedRowKeys = [];
                                 newSelectedRowKeys = changableRowKeys.filter((key, index) => {
-                                    return !this.data[index].isDir;
+                                    return !this.dataSource[index].isDir;
                                 });
                                 this.selectedRowKeys = newSelectedRowKeys;
                             },
@@ -449,18 +295,12 @@
                 this.fileSuffix = value.data;
             });
             resource.fetchBucket();
-            this.contentTypeDataSource = [...this.allContentTypes];
             $(".ant-table-body").css("overflow-x", "auto");
         },
         watch: {
-            "addrForm.expireNumber"() {
-                if (this.addrForm.expireNumber < 1) {
-                    this.addrForm.expireNumber = 1;
-                }
-            },
             currentBucket() {
                 let pagination = this.pagination;
-                this.data = [];
+                this.dataSource = [];
                 //只有第一次进来的时候需要记忆加载
                 this.selectedRowKeys = [];
                 if (!this.refreshed) {
@@ -485,8 +325,8 @@
                     this.refreshed = false;
                 }
             },
-            data() {
-                this.images = this.data.filter(record => {
+            dataSource() {
+                this.images = this.dataSource.filter(record => {
                     return record.image;
                 }).map(record => {
                     let url = `/mos/${this.currentBucket}${record.urlEncodePath}`;
@@ -499,6 +339,9 @@
             }
         },
         methods: {
+            // changeListType() {
+            //     this.listType = this.listType === 'list' ? 'pics' : 'list';
+            // },
             handleActionClick(e) {
                 switch (e.key) {
                     case 'delete':
@@ -515,33 +358,6 @@
             onMoveToBucket() {
                 this.$refs.move.onCopyToBucket(this.getSelectRecords());
             },
-            getResourceUrl(record) {
-                let videoSuffix = this.fileSuffix.video;
-                let fileName = record.fileName;
-                for (let item of videoSuffix) {
-                    if (fileName.endsWith(item)) {
-                        return `/viewer/video?bucket=${this.currentBucket}&id=${record.id}&path=${this.currentDir.path}`;
-                    }
-                }
-                return record.signUrl ? record.signUrl : `/mos/${this.currentBucket}${record.urlEncodePath}?render=true`;
-            },
-            onPressDown(target, dir) {
-                if (this.longPressTimer) {
-                    clearTimeout(this.longPressTimer);
-                }
-                const url = `/mos/${this.currentBucket}${dir.urlEncodePath}?gallary=true`;
-                let $this = this;
-                this.longPressTimer = setTimeout(function () {
-                    $this.onRecentClick(dir);
-                    window.open(url, target);
-                }, 1000);
-            },
-            onPressUp() {
-                if (this.longPressTimer) {
-                    clearTimeout(this.longPressTimer);
-                    this.longPressTimer = null;
-                }
-            },
             canInsert() {
                 return this.hasPerm(this.currentBucket, 'INSERT');
             },
@@ -557,119 +373,21 @@
             onCopyToBucket() {
                 this.$refs.copy.onCopyToBucket(this.getSelectRecords());
             },
-            onEditDir(record) {
-                this.editDirVisible = true;
-                let parentPath = '/';
-                let name = '';
-                let id = null;
-                if (record && record.id) {
-                    id = record.id;
-                    let path = record.path;
-                    if (path !== '/') {
-                        let index = path.lastIndexOf('/');
-                        parentPath = path.substring(0, index);
-                        name = path.substring(index + 1);
-                    }
-                    if (parentPath === '') {
-                        parentPath = '/';
-                    }
-                } else {
-                    parentPath = this.currentDir.path;
-                }
-                this.editDirForm = {
-                    parentPath: parentPath,
-                    name: name,
-                    id: id
-                }
-                this.$nextTick().then(value => {
-                    this.$refs.editDirName.focus();
-                });
+            onAddDir() {
+                this.$refs.dirModal.onAddDir();
             },
-            //修改文件夹
-            onEditDirOk() {
-                this.editDirSaving = true;
-                const $this = this;
-                let editDirForm = this.editDirForm;
-                let parentPath = editDirForm.parentPath;
-                let name = editDirForm.name;
-                if (parentPath.endsWith("/")) {
-                    parentPath = parentPath.substring(0, parentPath.length - 1);
-                }
-                if (name.startsWith("/")) {
-                    name = name.substring(1);
-                }
-                let path = parentPath + '/' + name;
-                if (path !== '/' && path.endsWith('/')) {
-                    path = path.substring(0, path.length - 1);
-                }
-                editDirForm.path = path;
-                if (this.editDirForm.id) {
-                    this.$http.get(`/member/dir/${this.currentBucket}/findByPath`, {
-                        params: {
-                            path: path
-                        }
-                    }).then(response => {
-                        let desDir = response.data.result;
-                        let isExists = !!desDir;
-                        if (isExists) {
-                            let srcDir = this.data.filter(value => value.isDir && value.id === $this.editDirForm.id)[0];
-                            let srcPath = srcDir.path;
-                            this.$confirm({
-                                title: '合并确认',
-                                content: '文件夹' + path + '已存在，是否将' + srcPath + '合并到' + path + '，同名文件将进行覆盖?',
-                                okText: '确认',
-                                cancelText: '取消',
-                                onOk() {
-                                    $this.$http.put(`/member/dir/${$this.currentBucket}/merge/${srcDir.id}/to/${desDir.id}`).then(res => {
-                                        $this.$message.success('合并成功');
-                                        $this.currentDir = desDir;
-                                        $this.editDirVisible = false;
-                                        $this.editDirSaving = false;
-                                        $this.reload();
-                                    }, reason => {
-                                        $this.editDirSaving = false;
-                                    })
-                                },
-                                onCancel() {
-                                    $this.editDirSaving = false;
-                                }
-                            });
-                        } else {
-                            this.$http.put(`/member/dir/${this.currentBucket}/${this.editDirForm.id}`, this.editDirForm).then(response => {
-                                this.$message.success("修改成功");
-                                this.editDirSaving = false;
-                                this.editDirVisible = false;
-                                this.reload();
-                            }, reason => {
-                                $this.editDirSaving = false;
-                            });
-                        }
-                    }, reason => {
-                        this.editDirSaving = false;
-                    });
-                } else {
-                    this.$http.post(`/member/dir/${this.currentBucket}`, this.editDirForm).then(response => {
-                        this.$message.success("创建成功");
-                        this.editDirSaving = false;
-                        this.editDirVisible = false;
-                        this.reload();
-                    }, reason => {
-                        this.editDirSaving = false;
-                    });
-                }
+            onEditDir(record) {
+                this.$refs.dirModal.onEditDir(record);
             },
             showImages(url, record) {
-                resource.showImages(url, record);
-            },
-            getResourceClass(record) {
-                let contains = false;
-                for (let path of this.historyClicks) {
-                    if (path === record.path) {
-                        contains = true;
-                        break;
+                if (record) {
+                    this.onRecentClick(record);
+                }
+                for (let i = 0; i < this.images.length; i++) {
+                    if (this.images[i].origin.indexOf(url) !== -1) {
+                        this.$viewer.view(i);
                     }
                 }
-                return 'resource-link ' + (contains ? 'activeAnchor' : '');
             },
             onRecentClick(record) {
                 this.historyClicks.push(record.path);
@@ -694,40 +412,7 @@
                 });
             },
             openGenAddr(record) {
-                this.addrForm = {
-                    signUrl: null,
-                    openId: null,
-                    isPublic: record.isPublic,
-                    fileName: record.fileName,
-                    resourceId: null,
-                    dirId: null,
-                    expireSeconds: 3600,
-                    expireNumber: 1,
-                    expireUnit: 'hour',
-                    bucketName: this.currentBucket
-                }
-                if (record.isDir) {
-                    this.addrForm.dirId = record.id;
-                } else {
-                    this.addrForm.resourceId = record.id;
-                }
-                this.addrVisible = true;
-                this.$http.get('/member/access/' + this.currentBucket).then(response => {
-                    this.openIds = response.data.result;
-                    this.addrForm.openId = this.openIds[0].openId;
-                    if (record.isPublic) {
-                        resource.genAddr();
-                    }
-                });
-            },
-            onExpireUnitChange(unit) {
-                if (unit === 'ever') {
-                    this.addrForm.expireNumber = 1;
-                }
-                this.addrForm.signUrl = '';
-            },
-            addrHandleOk() {
-                resource.genAddr();
+                this.$refs.addrModal.openGenAddr(record);
             },
             onSelectChange(selectedRowKeys, selectedRows) {
                 this.selectedRowKeys = selectedRowKeys;
@@ -773,7 +458,7 @@
                 });
             },
             getSelectRecords() {
-                const rows = this.data;
+                const rows = this.dataSource;
                 const selectedRowKeys = this.selectedRowKeys;
                 return selectedRowKeys.map(value => {
                     for (let row of rows) {
@@ -865,14 +550,14 @@
                     const pagination = {...this.pagination};
                     if (result.resources) {
                         pagination.current = result.resources.pageNum;
-                        this.data = [...result.resources.list];
+                        this.dataSource = [...result.resources.list];
                         pagination.total = result.resources.total;
                         let pageSize = result.resources.pageSize;
                         if (pageSize > 0) {
                             pagination.pageSize = pageSize;
                         }
                     } else {
-                        this.data = [];
+                        this.dataSource = [];
                         pagination.total = 0;
                     }
                     this.pagination = pagination;
@@ -911,25 +596,7 @@
                 return sizeByte.toFixed(3) + unit;
             },
             onEditResource(record) {
-                this.saving = false;
-                this.editForm = {...record}
-                this.editForm.pathname = record.path;
-                this.editVisible = true;
-            },
-            //编辑资源
-            editHandleOk() {
-                this.saving = true;
-                this.$http.put(`/member/resource/${this.currentBucket}/${this.editForm.id}`, this.editForm).then(response => {
-                    this.$message.success("更新成功");
-                    this.reload();
-                    this.saving = false;
-                    this.editVisible = false;
-                }, reason => {
-                    this.saving = false
-                });
-            },
-            onContentTypeSearch(searchText) {
-                this.contentTypeDataSource = this.allContentTypes.filter(value => value.indexOf(searchText) !== -1);
+                this.$refs.resourceModal.onEditResource(record);
             },
             onUpload() {
                 this.$refs.upload.onUpload();

@@ -68,55 +68,6 @@ let methods = {
 
         loadNext();
     },
-    genAddr() {
-        if (!$that.addrForm.openId) {
-            Vue.prototype.$message.warn("请先创建一个秘钥!")
-            return;
-        }
-        $that.addrForm.signUrl = '';
-        let body = {...$that.addrForm};
-        let x = 1;
-        let expireNumber = parseInt($that.addrForm.expireNumber);
-        if (expireNumber < 1) {
-            Vue.prototype.$message.warn("时间不能小于1");
-            return;
-        }
-        switch ($that.addrForm.expireUnit) {
-            case "minute":
-                x = 60;
-                break;
-            case "hour":
-                x = 3600;
-                break;
-            case "day":
-                x = 3600 * 24;
-                break;
-            case "month":
-                x = 3600 * 24 * 30;
-                break;
-            case "year":
-                x = 3600 * 24 * 30 * 365;
-                break;
-            case "ever":
-                x = -1;
-                expireNumber = 1;
-                break;
-        }
-        body.expireSeconds = x * expireNumber;
-        Vue.prototype.$http.post('/member/access/sign', body).then(response => {
-            $that.addrForm.signUrl = response.data.result;
-        });
-    },
-    showImages(url, record) {
-        if (record) {
-            $that.onRecentClick(record);
-        }
-        for (let i = 0; i < $that.images.length; i++) {
-            if ($that.images[i].origin.indexOf(url) !== -1) {
-                $that.$viewer.view(i);
-            }
-        }
-    },
     popHandler(e) {
         const params = e.state;
         if (params) {

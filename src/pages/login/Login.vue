@@ -47,20 +47,17 @@
 						</a-row>
 					</a-form-item>
 					<a-form-item>
-						<!--				<a-checkbox-->
-						<!--						v-decorator="[-->
-						<!--          'remember',-->
-						<!--          {-->
-						<!--            valuePropName: 'checked',-->
-						<!--            initialValue: true,-->
-						<!--          },-->
-						<!--        ]"-->
-						<!--				>-->
-						<!--					Remember me-->
-						<!--				</a-checkbox>-->
-						<!--				<a class="login-form-forgot" href="">-->
-						<!--					Forgot password-->
-						<!--				</a>-->
+						<a-checkbox
+								v-decorator="[
+						          'rememberMe',
+						          {
+						            valuePropName: 'checked',
+						            initialValue: false,
+						          },
+						        ]"
+						>
+							记住我
+						</a-checkbox>
 						<a-button type="primary" html-type="submit" class="login-form-button">
 							登录
 						</a-button>

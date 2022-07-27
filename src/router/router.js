@@ -77,6 +77,10 @@ let getRoutes = function () {
                 name: '视频',
                 path: '/viewer/video',
                 component: () => import('../pages/viewer/VideoViewer.vue')
+            }, {
+                name: '图库',
+                path: '/viewer/photo',
+                component: () => import('../pages/viewer/PhotoViewer.vue')
             }]
         }
     ];

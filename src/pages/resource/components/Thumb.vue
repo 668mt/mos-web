@@ -8,6 +8,9 @@
 		<img style="height:100%;max-width:100%;position:absolute;left:50%;transform:translateX(-50%);top:0;z-index:5;"
 			 :src="src"
 		/>
+		<div v-if="videoLength" style="z-index:5;position: absolute;background: #000;right: 0;bottom: 0;padding:0 3px;color:#fff;font-size: 10px;">
+			{{videoLength}}
+		</div>
 	</div>
 </template>
 
@@ -15,7 +18,12 @@
     export default {
         name: "Thumb",
         props: {
-            src: String
+            src: String,
+            videoLength: String
+        },
+        data() {
+            return {
+            }
         }
     }
 </script>

@@ -2,7 +2,7 @@
 <template>
 	<div class="video-block">
 		<a-row type="flex">
-			<a-col :sm="{span:24}" :md="{span:16}" style="padding-right: 5px;">
+			<a-col :xs="{span:24}" :sm="{span:24}" :md="{span:16}" style="padding-right: 5px;">
 				<a-affix v-if="isMobile">
 					<div id="videoContainer" style="width: 100%;height:100%;" class="player">
 						<video></video>
@@ -21,25 +21,38 @@
 					</div>
 				</div>
 			</a-col>
-			<a-col :sm="{span:24}" :md="{span:8}" style="color:#fff;">
+			<a-col :xs="{span:24}" :sm="{span:24}" :md="{span:8}" style="color:#fff;">
 				<div>
+					<div style="padding:10px;color:#000;background: #fff;" class="video-container-header">
+						<span style="font-weight: 600;font-size: 14px;margin:0;">文件夹：{{query.path}}</span>
+						<br/>
+						<span style="font-size: 12px;color:#999;">当前播放：{{currentPlayIndex}}<span
+								style="margin:0 3px;">/</span>{{maxTotal}}
+								<a-icon type="environment" style="cursor:pointer;margin-left: 10px;"
+										@click="scrollToPosition"/>
+								</span>
+					</div>
 					<div style="border:1px solid #ccc;overflow-y: auto;overflow-x:hidden;" class="video-list-container"
 						 ref="container">
-						<a-affix :target="() => this.$refs.container" :offset-top="1">
-							<div style="padding:10px;color:#000;background: #fff;">
-								<span style="font-weight: 600;font-size: 14px;margin:0;">文件夹：{{query.path}}</span>
-								<br/>
-								<span style="font-size: 12px;color:#999;">当前播放：{{currentPlayIndex}}<span
-										style="margin:0 3px;">/</span>{{page.total?page.total:0}}</span>
-							</div>
-						</a-affix>
+<!--						<a-affix :target="() => this.$refs.container" :offset-top="1">-->
+<!--							<div style="padding:10px;color:#000;background: #fff;">-->
+<!--								<span style="font-weight: 600;font-size: 14px;margin:0;">文件夹：{{query.path}}</span>-->
+<!--								<br/>-->
+<!--								<span style="font-size: 12px;color:#999;">当前播放：{{currentPlayIndex}}<span-->
+<!--										style="margin:0 3px;">/</span>{{maxTotal}}-->
+<!--								<a-icon type="environment" style="cursor:pointer;margin-left: 10px;"-->
+<!--										@click="scrollToPosition"/>-->
+<!--								</span>-->
+<!--							</div>-->
+<!--						</a-affix>-->
 						<div
+								ref="infinite"
 								v-infinite-scroll="handleInfiniteOnLoad"
 								class="demo-infinite-container video-list"
-								:infinite-scroll-disabled="!page.hasNextPage"
+								:infinite-scroll-disabled="!hasNextPage"
 								:infinite-scroll-distance="10"
 						>
-							<a-list item-layout="horizontal" :data-source="page.list" :locale="{emptyText:'暂无数据'}">
+							<a-list item-layout="horizontal" :data-source="videos" :locale="{emptyText:'暂无数据'}">
 								<a-list-item slot="renderItem" slot-scope="item,index"
 											 @click="playChange(item)"
 											 :class="`list-item ${active && active.id === item.id ? 'active'  : ''}`">
@@ -61,11 +74,12 @@
 												{{index+1}}
 											</div>
 											<Thumb style="width:110px;height:65px;"
+												   :video-length="item.videoLength"
 												   :src="`/mos/${query.bucket}${item.urlEncodePath}?thumb=true`"/>
 										</div>
 									</a-list-item-meta>
 								</a-list-item>
-								<div v-if="loading && page.hasNextPage" class="demo-loading-container">
+								<div v-if="loading && hasNextPage" class="demo-loading-container">
 									<a-spin/>
 								</div>
 							</a-list>
@@ -81,6 +95,7 @@
     import Thumb from "../resource/components/Thumb";
     import mt from '../../utils/mt';
     import infiniteScroll from 'vue-infinite-scroll';
+    import Lock from "../../utils/lock";
 
     let player;
     export default {
@@ -90,10 +105,11 @@
         data() {
             return {
                 query: {},
-                page: {},
+                pages: {},
                 active: undefined,
                 loading: false,
-                pageSize: 50
+                pageSize: 50,
+                lock: new Lock()
             }
         },
         mounted() {
@@ -110,8 +126,22 @@
             this.resize();
         },
         methods: {
+            scrollToPosition() {
+                this.scrollToIndex(this.currentPlayIndex);
+            },
+            scrollToIndex(index) {
+                let videoElement = this.$el.getElementsByClassName('video-list-container')[0];
+                let items = this.$el.getElementsByClassName('list-item');
+                if (index > items.length) {
+                    this.handleInfiniteOnLoad();
+                    setTimeout(() => this.scrollToIndex(index), 100);
+                    return;
+                }
+                let item = items[index - 1];
+                videoElement.scrollTop = item.offsetTop;
+            },
             nextVideo() {
-                let list = this.page.list;
+                let list = this.videos;
                 let nextIndex = this.currentPlayIndex;
                 if (!list) {
                     return;
@@ -132,66 +162,57 @@
                 // let marginTop = ($(document).height() - height) / 2;
                 $videoContainer.css("height", height + 'px');
                 if (!mt.isMobile()) {
-                    $(".video-list-container").css("height", height + 'px');
-                    // $(".video-list-container").css("height", '100%');
-                }else{
+                    let headerHeight = $(".video-container-header").css("height");
+                    $(".video-list-container").css("height", `calc(${height}px - ${headerHeight})`);
+                } else {
                     $(".video-list-container").css("height", '800px');
-				}
-                // $videoContainer.css("margin-top", marginTop + 'px');
+                }
             },
             handleInfiniteOnLoad() {
-                if (this.page.hasNextPage !== undefined && !this.page.hasNextPage) {
+                if (!this.hasNextPage) {
                     return;
                 }
-                this.fetchRecentResources(this.page.pageNum + 1);
+                this.fetchRecentResources(this.nextPageNum);
             },
             fetchRecentResources(pageNum) {
+                pageNum = pageNum ? pageNum : 1;
+                if (this.pages['p' + pageNum]) {
+                    return;
+                }
                 let bucket = this.query.bucket;
                 let path = this.query.path;
                 this.loading = true;
                 this.$http.get(`/member/resource/${bucket}/files/video`, {
                     params: {
                         path,
-                        pageNum: pageNum ? pageNum : 1,
+                        pageNum: pageNum,
                         pageSize: this.pageSize
                     }
                 }).then(value => {
-                    let oldList = this.page.list;
                     let page = value.data;
-                    if (!oldList) {
-                        oldList = [];
-                    }
-                    for (let item of page.list) {
-                        oldList.push(item);
-                    }
-                    page.list = oldList;
-                    this.page = page;
                     this.loading = false;
+                    this.$set(this.pages, 'p' + pageNum, page);
                 }, reason => this.loading = false);
             },
             fetchResource() {
                 let bucket = this.query.bucket;
                 let id = this.query.id;
                 let path = this.query.path;
-                this.$http.get(`/member/resource/${bucket}/file/${id}`, {
+                this.$http.get(`/member/resource/${bucket}/file/video/${id}`, {
                     params: {
                         path
                     }
                 }).then(value => {
                     let data = value.data;
                     this.playResource(data);
+                    this.scrollToPosition();
                 });
             },
             playResource(data) {
                 document.title = data.fileName;
                 this.active = data;
-                // let url = `/mos/${this.query.bucket}${data.urlEncodePath}`;
                 let url = data.signUrl;
-                url = url.replace('render=true', 'render=false');
-                url = url.replace('localhost', '192.168.0.174');
-                let index = url.indexOf("?");
-                // this.playVideo('http://' + encodeURIComponent(url.substring(0, index)) + url.substring(index));
-                this.playVideo(encodeURIComponent(url.substring(0, index)) + url.substring(index));
+                this.playVideo(url);
                 if (!this.isMobile) {
                     history.pushState({}, data.fileName, `/viewer/video?id=${data.id}&bucket=${this.query.bucket}&path=${encodeURIComponent(this.query.path)}`);
                 }
@@ -234,28 +255,81 @@
                 this.play(url, true);
             },
             playVideo(url) {
+                url = url.replace('render=true', 'render=false');
+                url = url.replace('localhost', '192.168.0.174');
                 if (url.indexOf('.m3u8') !== -1) {
+                    // if(this.isMobile){
+                    //     let index = url.indexOf("?");
+                    //     url = encodeURIComponent(url.substring(0, index)) + url.substring(index);
+                    // }
                     this.playM3U8(url);
                 } else {
+                    let index = url.indexOf("?");
+                    url = encodeURIComponent(url.substring(0, index)) + url.substring(index);
                     this.playMp4(url);
                 }
             },
         },
         computed: {
+            videos() {
+                let list = [];
+                for (let pageNum in this.pages) {
+                    for (let item of this.pages[pageNum].list) {
+                        list.push(item);
+                    }
+                }
+                return list;
+            },
+            hasNextPage() {
+                if (!this.pages) {
+                    return true;
+                }
+                let maxPage = 1;
+                for (let pageNum of Object.keys(this.pages)) {
+                    maxPage = Math.max(parseInt(pageNum.replace('p', '')), maxPage);
+                }
+                let max = this.pages['p' + maxPage];
+                if (!max) {
+                    return true;
+                }
+                return max.hasNextPage;
+            },
+            nextPageNum() {
+                if (!this.pages) {
+                    return 1;
+                }
+                let maxPage = 0;
+                for (let pageNum of Object.keys(this.pages)) {
+                    maxPage = Math.max(parseInt(pageNum.replace('p', '')), maxPage);
+                }
+                return maxPage + 1;
+            },
+            maxTotal() {
+                if (!this.pages) {
+                    return 0;
+                }
+                let page = this.pages['p1'];
+                if (!page) {
+                    return 0;
+                }
+                return page.total;
+            },
             isMobile() {
                 return mt.isMobile();
             },
             currentPlayIndex() {
-                if (this.page && this.page.list && this.active) {
-                    for (let i = 0; i < this.page.list.length; i++) {
-                        let item = this.page.list[i];
+                if (!this.active) {
+                    return 0;
+                }
+                if (this.active.rowNum) {
+                    return this.active.rowNum;
+                } else {
+                    for (let i = 0; i < this.videos.length; i++) {
+                        let item = this.videos[i];
                         if (this.active.id === item.id) {
                             return i + 1;
                         }
                     }
-                }
-                if (this.active) {
-                    return this.active.rowNum;
                 }
                 return 0;
             }
@@ -266,6 +340,9 @@
 
 <style scoped type="less">
 	@import "index.less";
+	.border{
+		border:1px solid #000;
+	}
 	/*@media screen and (max-width: 575.98px) {*/
 	/*	.video-block {*/
 	/*		padding: 10px;*/
