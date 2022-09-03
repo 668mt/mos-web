@@ -72,6 +72,7 @@
 				 @change="handleTableChange">
 			<span slot="name" slot-scope="text,record">
 				<ListName :record="record" :current-bucket="currentBucket" :show-detail-path="showDetailPath"
+						  :key="(record.isDir?'dir-':'resource-')+record.id"
 						  :current-dir="currentDir"
 						  :historyClicks="historyClicks"
 						  :fileSuffix="fileSuffix"
@@ -117,8 +118,8 @@
 				<span v-else>
 					<a-divider type="vertical"/>
 					<a :href="`/mos/${currentBucket}${record.urlEncodePath}?gallary=true`" target="_blank">图集</a>
-<!--					<a-divider type="vertical"/>-->
-<!--					<a :href="`/viewer/photo?bucket=${currentBucket}&path=${record.path}`" target="_blank">相册</a>-->
+					<!--					<a-divider type="vertical"/>-->
+					<!--					<a :href="`/viewer/photo?bucket=${currentBucket}&path=${record.path}`" target="_blank">相册</a>-->
 				</span>
 			</span>
 		</a-table>

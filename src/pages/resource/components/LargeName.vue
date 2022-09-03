@@ -35,47 +35,6 @@
 					{{showDetailPath?record.path:record.fileName}}
 				</p>
 			</a>
-			<!--			<a-row type="flex" class="file">-->
-			<!--				<a-col :span="record.thumbFileHouseId ? 8:2" align="center" class="thumb">-->
-			<!--					<span v-if="record.thumbFileHouseId">-->
-			<!--						<a :id="record.id" v-if="record.image"-->
-			<!--						   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"-->
-			<!--						   :class="getResourceClass(record)"-->
-			<!--						>-->
-			<!--							<Thumb :video-length="record.videoLength"-->
-			<!--								   :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>-->
-			<!--						</a>-->
-			<!--						<a v-else :href="getResourceUrl(record)"-->
-			<!--						   @click="onRecentClick(record)"-->
-			<!--						   target="_blank">-->
-			<!--							<Thumb :video-length="record.videoLength"-->
-			<!--								   :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>-->
-			<!--						</a>-->
-			<!--					</span>-->
-			<!--					<span v-else>-->
-			<!--						<icon-font class="resource-icon" v-if="record.icon" :type="record.icon"-->
-			<!--								   style="font-size:16px;margin:0;"/>-->
-			<!--						<icon-font class="resource-icon" v-else type="icon-wenjian"-->
-			<!--								   style="font-size:16px;margin:0;"/>-->
-			<!--					</span>-->
-			<!--				</a-col>-->
-			<!--				<a-col span="16" class="file-title">-->
-			<!--					&lt;!&ndash; 图片展示 &ndash;&gt;-->
-			<!--					<a :id="record.id" v-if="record.image"-->
-			<!--					   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"-->
-			<!--					   :class="getResourceClass(record)"-->
-			<!--					>-->
-			<!--						{{showDetailPath?record.path:record.fileName}}-->
-			<!--					</a>-->
-			<!--					<a :id="record.id" v-else-->
-			<!--					   :class="getResourceClass(record)"-->
-			<!--					   :href="getResourceUrl(record)"-->
-			<!--					   @click="onRecentClick(record)"-->
-			<!--					   target="_blank">-->
-			<!--						{{showDetailPath?record.path:record.fileName}}-->
-			<!--					</a>-->
-			<!--				</a-col>-->
-			<!--			</a-row>-->
 		</span>
 	</div>
 </template>

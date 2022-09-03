@@ -12,13 +12,29 @@
 			   @mouseup="onPressUp(record)"
 			>
 				{{showDetailPath?record.path:('/'+record.fileName)}}
+				<a-tag v-if="count !== undefined" color="pink">{{count}}</a-tag>
 			</a>
+			<template v-if="thumbs && thumbs.length > 0">
+				<a-spin :spinning="loading" style="width: 100%">
+				<a-row type="flex" :gutter="10" style="margin-top: 10px;">
+					<a-col :span="8" v-for="item of thumbs" :key="item.id">
+						<a :href="getThumbResourceUrl(record,item)"
+						   @click="onRecentClick(record)"
+						   target="_blank">
+							<Thumb :video-length="item.videoLength"
+								   :src="`/mos/${currentBucket}${item.urlEncodePath}?thumb=true`"/>
+						</a>
+					</a-col>
+				</a-row>
+				</a-spin>
+			</template>
 		</span>
 		<span v-else>
 			<!-- 文件 -->
-			<a-row type="flex" class="file">
+			<a-row class="file" :gutter="10">
 				<a-col :span="record.thumbFileHouseId ? 8:2" align="center" class="thumb">
 					<span v-if="record.thumbFileHouseId">
+						<!-- 图片 -->
 						<a :id="record.id" v-if="record.image"
 						   @click="showImages(`/mos/${currentBucket}${record.urlEncodePath}`,record)"
 						   :class="getResourceClass(record)"
@@ -26,6 +42,7 @@
 							<Thumb :video-length="record.videoLength"
 								   :src="`/mos/${currentBucket}${record.urlEncodePath}?thumb=true`"/>
 						</a>
+						<!-- 视频 -->
 						<a v-else :href="getResourceUrl(record)"
 						   @click="onRecentClick(record)"
 						   target="_blank">
@@ -48,6 +65,7 @@
 					>
 						{{showDetailPath?record.path:record.fileName}}
 					</a>
+					<!-- 视频 -->
 					<a :id="record.id" v-else
 					   :class="getResourceClass(record)"
 					   :href="getResourceUrl(record)"
@@ -56,6 +74,10 @@
 						{{showDetailPath?record.path:record.fileName}}
 					</a>
 				</a-col>
+<!--				<a-col :span="16" style="margin:0;font-size: 12px;color:#999;">-->
+<!--					<span>{{record.readableSize}}</span>-->
+<!--					<span style="margin-left: 10px;">{{record.visits}}次访问</span>-->
+<!--				</a-col>-->
 			</a-row>
 		</span>
 	</div>
@@ -77,11 +99,36 @@
             onRecentClick: Function,
             changeCurrentPath: Function,
             fileSuffix: Object,
-
         },
         components: {Thumb, IconFont},
+        computed: {
+            thumbHeight() {
+                return '80px';
+            }
+        },
         data() {
-            return {}
+            return {
+                thumbs: undefined,
+                fileCount: undefined,
+                dirCount: undefined,
+                count: undefined,
+                loading: false
+            }
+        },
+        mounted() {
+            if (!this.thumbs && this.record.isDir) {
+                this.loading = true;
+                this.$http.get(`/member/dir/${this.currentBucket}/detailInfo/${this.record.id}`).then(value => {
+                    if (value.data) {
+                        let info = value.data;
+                        this.thumbs = info.thumbs;
+                        this.fileCount = info.fileCount;
+                        this.dirCount = info.dirCount;
+                        this.count = info.fileCount + info.dirCount;
+                    }
+                    this.loading = false;
+                }, reason => this.loading = false);
+            }
         },
         methods: {
             getResourceClass(record) {
@@ -100,6 +147,16 @@
                 for (let item of videoSuffix) {
                     if (fileName.endsWith(item)) {
                         return `/viewer/video?bucket=${this.currentBucket}&id=${record.id}&path=${this.currentDir.path}`;
+                    }
+                }
+                return record.signUrl ? record.signUrl : `/mos/${this.currentBucket}${record.urlEncodePath}?render=true`;
+            },
+            getThumbResourceUrl(dir, record) {
+                let videoSuffix = this.fileSuffix.video;
+                let fileName = record.name;
+                for (let item of videoSuffix) {
+                    if (fileName.endsWith(item)) {
+                        return `/viewer/video?bucket=${this.currentBucket}&id=${record.id}&path=${dir.path}`;
                     }
                 }
                 return record.signUrl ? record.signUrl : `/mos/${this.currentBucket}${record.urlEncodePath}?render=true`;
@@ -125,6 +182,17 @@
     }
 </script>
 
-<style scoped>
-
+<style scoped lang="less">
+	.file .file-title a {
+		word-break: break-all;
+		overflow: hidden;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		display: -webkit-box;
+	}
+	
+	.file .thumb a img {
+		max-width: 100%;
+		max-height: 100%;
+	}
 </style>
