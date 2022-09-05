@@ -117,7 +117,7 @@
 				</span>
 				<span v-else>
 					<a-divider type="vertical"/>
-					<a :href="`/mos/${currentBucket}${record.urlEncodePath}?gallary=true`" target="_blank">图集</a>
+					<a :href="`/viewer/gallery?bucket=${currentBucket}&path=${record.urlEncodePath}`" target="_blank">图集</a>
 					<!--					<a-divider type="vertical"/>-->
 					<!--					<a :href="`/viewer/photo?bucket=${currentBucket}&path=${record.path}`" target="_blank">相册</a>-->
 				</span>

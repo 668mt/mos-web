@@ -90,6 +90,7 @@
                     clearTimeout(this.longPressTimer);
                 }
                 const url = `/mos/${this.currentBucket}${dir.urlEncodePath}?gallary=true`;
+                // const url = `/viewer/gallery?path=${dir.urlEncodePath}`;
                 let $this = this;
                 this.longPressTimer = setTimeout(function () {
                     $this.onRecentClick(dir);

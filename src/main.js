@@ -11,6 +11,14 @@ import 'animate.css/source/animate.css'
 import 'viewerjs/dist/viewer.css'
 import Viewer from 'v-viewer'
 
+import VueLazyload from 'vue-lazyload'
+const loadimage = require('./assets/img/loading.gif')
+Vue.use(VueLazyload, {
+    preLoad: 5,
+    loading: loadimage,
+    attempt: 1
+})
+
 Vue.use(Viewer, {
     defaultOptions: {
         zIndex: 9999,

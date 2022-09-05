@@ -79,8 +79,8 @@ let getRoutes = function () {
                 component: () => import('../pages/viewer/VideoViewer.vue')
             }, {
                 name: '图库',
-                path: '/viewer/photo',
-                component: () => import('../pages/viewer/PhotoViewer.vue')
+                path: '/viewer/gallery',
+                component: () => import('../pages/viewer/GalleryViewer.vue')
             }]
         }
     ];
