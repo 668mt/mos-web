@@ -2,13 +2,14 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import Login from "../pages/login/Login";
 import MenuView from "../layouts/MenuView";
-import PageView from "../layouts/PageView";
+// import PageView from "../layouts/PageView";
 import User from "../pages/user/User";
 import Bucket from "../pages/bucket/Bucket";
 import Resource from "../pages/resource/Resource.vue";
 import Client from "../pages/client/Client";
 import Home from "../pages/home/Home";
 import Trash from "../pages/resource/Trash";
+import RouteView from "../layouts/RouteView";
 
 Vue.use(Router);
 
@@ -29,45 +30,63 @@ let getRoutes = function () {
             path: '/',
             component: MenuView,
             redirect: '/signin',
-            children: [{
-                path: '/content',
-                name: 'MOS',
-                icon: 'inbox',
-                component: PageView,
-                children: [{
+            children: [
+                {
                     path: '/home',
-                    name: '主页',
+                    name: '总览',
                     component: Home,
-                    icon: 'none'
-                }, {
-                    path: '/client',
-                    name: '服务器管理',
-                    component: Client,
-                    icon: 'none',
-                    invisible: !user.isAdmin
-                }, {
-                    path: '/user',
-                    name: '用户管理',
-                    component: User,
-                    icon: 'none',
-                    invisible: !user.isAdmin
-                }, {
+                    icon: 'area-chart',
+                },
+                {
+                    path: '/resource',
+                    name: '文件中心',
+                    component: RouteView,
+                    icon: 'folder-open',
+                    children: [
+                        {
+                            path: '/resource',
+                            name: '文件管理',
+                            component: Resource,
+                            icon: 'none'
+                        },
+                        {
+                            path: '/trash',
+                            name: '回收站',
+                            component: Trash,
+                            icon: 'none'
+                        },
+                    ]
+                },
+                {
                     path: '/bucket',
                     name: '桶管理',
                     component: Bucket,
-                    icon: 'none'
-                }, {
-                    path: '/trash',
-                    name: '回收站',
-                    component: Trash,
-                    icon: 'none'
-                }, {
-                    path: '/resource',
-                    name: '资源管理',
-                    component: Resource,
-                    icon: 'none'
-                },]
-            },]
+                    icon: 'shop'
+                },
+                {
+                    path: '/manage',
+                    name: '管理中心',
+                    component: RouteView,
+                    icon: 'desktop',
+                    invisible: !user.isAdmin,
+                    children: [
+                        {
+                            path: '/manage/client',
+                            name: '服务器管理',
+                            component: Client,
+                            icon: 'none',
+                            invisible: !user.isAdmin
+                        },
+                        {
+                            path: '/manage/user',
+                            name: '用户管理',
+                            component: User,
+                            icon: 'none',
+                            invisible: !user.isAdmin
+                        },
+                    ]
+                },
+            ]
         },
         {
             name: '资源可视',

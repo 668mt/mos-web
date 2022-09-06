@@ -1,5 +1,5 @@
 <template>
-  <a-layout-header :class="[theme, 'global-header']">
+  <a-layout-header :class="[theme, 'global-header']" style="height:auto;">
     <div :class="['global-header-wide', layout]">
       <router-link v-if="isMobile || layout === 'head'" to="/" :class="['logo', isMobile ? null : 'pc', theme]">
         <img width="32" src="@/assets/img/logo.png" />
@@ -8,7 +8,7 @@
       <a-divider v-if="isMobile" type="vertical" />
       <a-icon v-if="layout === 'side'" class="trigger" :type="collapsed ? 'menu-unfold' : 'menu-fold'" @click="toggleCollapse"/>
       <div v-if="layout === 'head'" class="global-header-menu">
-        <i-menu style="height: 64px; line-height: 64px;" :theme="theme" mode="horizontal" :menuData="menuData" @select="onSelect"/>
+        <i-menu style="margin-left: 10px;" :theme="theme" mode="horizontal" :menuData="menuData" @select="onSelect"/>
       </div>
       <div :class="['global-header-right', theme]">
 <!--          <header-search class="header-item" />-->
@@ -61,6 +61,11 @@ export default {
   }
 }
 </script>
+<style>
+  .global-header .ant-menu-horizontal{
+    border-bottom:none;
+  }
+</style>
 
 <style lang="less" scoped>
   .trigger {

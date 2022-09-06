@@ -54,7 +54,7 @@
 
 <style lang="less" scoped>
 	.page-header {
-		margin: -24px -24px 0;
+		margin: -10px -16px 0;
 	}
 	
 	.link {

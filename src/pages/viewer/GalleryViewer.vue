@@ -1,12 +1,15 @@
 <template>
     <div style="padding: 10px">
         <a-spin :spinning="true" style="width: 100%" v-if="fetching && images.length === 0"/>
-        <a-row v-else>
-            <a-col :span="16" :offset="4" v-for="img in images" :key="img.id"
-                   style="margin-bottom: 10px;background: #eee;">
-                <img v-lazy="img.signUrl">
-            </a-col>
-        </a-row>
+        <div v-else>
+            <a-empty v-if="images.length === 0"/>
+            <a-row v-else>
+                <a-col :span="16" :offset="4" v-for="img in images" :key="img.id"
+                       style="margin-bottom: 10px;background: #eee;">
+                    <img v-lazy="img.signUrl">
+                </a-col>
+            </a-row>
+        </div>
     </div>
 </template>
 
@@ -36,12 +39,13 @@
                         suffixs: ['.jpg', '.gif', '.jpeg', '.png'].join(','),
                         path,
                         sign,
+                        sortField:'name',
+                        sortOrder:'ascend',
                         pageNum,
                         pageSize
                     }
                 }).then(value => {
                     let page = value.data.result;
-                    console.log(page)
                     this.images.push(...page.list);
                     if (page.hasNextPage) {
                         this.fetchImages(pageNum + 1, pageSize);
@@ -55,8 +59,8 @@
 </script>
 <style>
     img[lazy=loading] {
-        width:200px!important;
-        height:200px!important;
+        width: 200px !important;
+        height: 200px !important;
         margin-left: 50%;
         transform: translateX(-50%);
     }

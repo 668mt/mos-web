@@ -7,16 +7,16 @@
 			</drawer>
 			<sider-menu :theme="theme" v-else-if="layout === 'side'" :menuData="menuData" :collapsed="collapsed"
 						:collapsible="true"/>
-			<!--    <drawer :open-drawer="showSetting" placement="right"  @change="onSettingDrawerChange">-->
-			<!--      <div class="setting" slot="handler">-->
-			<!--        <a-icon :type="showSetting ? 'close' : 'setting'" />-->
-			<!--      </div>-->
-			<!--      <setting />-->
-			<!--    </drawer>-->
+<!--			    <drawer :open-drawer="showSetting" placement="right"  @change="onSettingDrawerChange">-->
+<!--			      <div class="setting" slot="handler">-->
+<!--			        <a-icon :type="showSetting ? 'close' : 'setting'" />-->
+<!--			      </div>-->
+<!--			      <setting />-->
+<!--			    </drawer>-->
 			<a-layout class="global-layout-main">
 				<global-header :menuData="menuData" :collapsed="collapsed" @toggleCollapse="toggleCollapse"/>
 				<a-layout-content class="global-layout-content"
-								  :style="{minHeight: minHeight, padding: '24px 24px 0', position: 'relative'}">
+								  :style="{minHeight: minHeight, padding: '10px 0px 0', position: 'relative'}">
 					<slot></slot>
 				</a-layout-content>
 <!--				<a-layout-footer style="padding: 0px">-->

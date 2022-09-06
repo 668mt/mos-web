@@ -4,8 +4,10 @@ export default {
     namespaced: true,
     state: {
         isMobile: false,
-        theme: 'dark',
-        layout: 'side',
+        // theme: 'dark',
+        theme: 'light',
+        // layout: 'side',
+        layout: 'head',
         systemName: 'MOS对象存储',
         copyright: '668mt',
         // footerLinks: footerLinks,

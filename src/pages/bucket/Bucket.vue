@@ -1,22 +1,23 @@
 <template>
-	<a-card>
-		<a-row>
-			<a-button type="primary" @click="onAdd">添加</a-button>
-		</a-row>
-		<a-table :columns="columns" :data-source="data" :pagination="pagination"
-				 :rowKey="(row,index) => {return row.id}"
-				 :expandedRowKeys="expandedRowKeys"
-				 @expand="expand"
-				 @change="handleTableChange">
+    <a-card>
+        <a-row>
+            <a-button type="primary" @click="onAdd">添加</a-button>
+        </a-row>
+        <a-table :columns="columns" :data-source="data" :pagination="pagination"
+                 :rowKey="(row,index) => {return row.id}"
+                 :expandedRowKeys="expandedRowKeys"
+                 @expand="expand"
+                 :loading="loading"
+                 @change="handleTableChange">
 			<span slot="owner" slot-scope="text,record">
 				<a-tag v-if="record.isOwn" color="#108ee9">{{text}}</a-tag>
 				<a-tag v-else color="#87d068">{{text}}</a-tag>
 			</span>
-			<span slot="defaultIsPublic" slot-scope="text">
+            <span slot="defaultIsPublic" slot-scope="text">
 				<a-tag v-if="text" color="#f50">公开</a-tag>
 				<a-tag v-else color="#87d068">私有</a-tag>
 			</span>
-			<span slot="action" slot-scope="text,record">
+            <span slot="action" slot-scope="text,record">
 				<a @click="onEdit(record)">编辑</a>
 				<a-divider type="vertical"/>
 				<a style="color:red" @click="onGenerate(record)">新增秘钥</a>
@@ -26,100 +27,100 @@
 				</span>
 				<a-divider type="vertical"/>
 				<a-popconfirm
-						v-if="record.isOwn"
-						title="是否删除?"
-						ok-text="是"
-						cancel-text="否"
-						@confirm="onDelete(record.id)"
-				>
+                        v-if="record.isOwn"
+                        title="是否删除?"
+                        ok-text="是"
+                        cancel-text="否"
+                        @confirm="onDelete(record.id)"
+                >
 					<a style="color:red;">删除</a>
 				</a-popconfirm>
 			</span>
-			<a-table
-					slot="expandedRowRender"
-					:rowKey="(row,index) => {return row.openId}"
-					:columns="innerColumns"
-					:data-source="innerData"
-					:pagination="false">
-				<a-tooltip slot="secretKey" slot-scope="text">
-					<template slot="title">
-						{{text}}
-					</template>
-					<div style="width:200px;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">{{text}}
-					</div>
-				</a-tooltip>
-				<span slot="action" slot-scope="text,record">
+            <a-table
+                    slot="expandedRowRender"
+                    :rowKey="(row,index) => {return row.openId}"
+                    :columns="innerColumns"
+                    :data-source="innerData"
+                    :pagination="false">
+                <a-tooltip slot="secretKey" slot-scope="text">
+                    <template slot="title">
+                        {{text}}
+                    </template>
+                    <div style="width:200px;overflow: hidden;text-overflow:ellipsis;white-space: nowrap;">{{text}}
+                    </div>
+                </a-tooltip>
+                <span slot="action" slot-scope="text,record">
 					<a @click="onUpdateAccess(record)" style="margin-right:10px;">编辑</a>
 					<a-popconfirm
-							title="是否删除?"
-							ok-text="是"
-							cancel-text="否"
-							@confirm="onDeleteOpenId(record)"
-					>
+                            title="是否删除?"
+                            ok-text="是"
+                            cancel-text="否"
+                            @confirm="onDeleteOpenId(record)"
+                    >
 						<a style="color:red;">删除</a>
 					</a-popconfirm>
 				</span>
-			</a-table>
-			<!--			</template>-->
-		</a-table>
-		<div>
-			<a-modal v-model="visible" title="bucket详情" @ok="handleOk">
-				<a-form-model
-						:rules="rules"
-						ref="ruleForm"
-						:label-col="{span:6}"
-						:wrapper-col="{span:12}"
-						:model="form">
-					<a-form-model-item label="桶名称" prop="bucketName">
-						<a-input v-model="form.bucketName"/>
-					</a-form-model-item>
-					<a-form-model-item label="数据分片" prop="dataFragmentsAmount">
-						<a-input-number style="width:100%;" v-model="form.dataFragmentsAmount"/>
-					</a-form-model-item>
-					<a-form-model-item label="默认权限" prop="defaultIsPublic">
-						<a-radio-group v-model="form.defaultIsPublic">
-							<a-radio :value="true">公开</a-radio>
-							<a-radio :value="false">私有</a-radio>
-						</a-radio-group>
-					</a-form-model-item>
-				</a-form-model>
-			</a-modal>
-			<a-modal v-model="accessVisible" title="秘钥详情" @ok="accessHandleOk">
-				<a-form-model
-						ref="accessForm"
-						:label-col="{span:6}"
-						:wrapper-col="{span:12}"
-						:model="accessForm">
-					<a-form-model-item label="用途" prop="useInfo">
-						<a-input v-model="accessForm.useInfo"/>
-					</a-form-model-item>
-				</a-form-model>
-			</a-modal>
-			<a-modal v-model="grantVisible" title="授权" @ok="grantOk" width="1200px">
-				<!--						show-search-->
-				<!--						@change2="handleGrantChange"-->
-				<a-transfer
-						show-search
-						:filterOption="filterOption"
-						:data-source="userData"
-						:list-style="{width: '500px'}"
-						:operations="['添加授权', '删除授权']"
-						:target-keys="grantUserKeys"
-						@change="handleGrantChange"
-				>
-					<template
-							slot="children"
-							slot-scope="{props: { direction, filteredItems, selectedKeys, disabled: listDisabled },on: { itemSelectAll, itemSelect },}"
-					>
-						<a-table
-								:scroll="{x:450,y:400}"
-								:row-selection="getRowSelection({ disabled: listDisabled, selectedKeys, itemSelectAll, itemSelect })"
-								:columns="grantColumns"
-								:data-source="filteredItems"
-								:pagination="false"
-								size="small"
-								:style="{ pointerEvents: listDisabled ? 'none' : null ,'overflow-x':'auto',}"
-								:custom-row="
+            </a-table>
+            <!--			</template>-->
+        </a-table>
+        <div>
+            <a-modal v-model="visible" title="bucket详情" @ok="handleOk">
+                <a-form-model
+                        :rules="rules"
+                        ref="ruleForm"
+                        :label-col="{span:6}"
+                        :wrapper-col="{span:12}"
+                        :model="form">
+                    <a-form-model-item label="桶名称" prop="bucketName">
+                        <a-input v-model="form.bucketName"/>
+                    </a-form-model-item>
+                    <a-form-model-item label="数据分片" prop="dataFragmentsAmount">
+                        <a-input-number style="width:100%;" v-model="form.dataFragmentsAmount"/>
+                    </a-form-model-item>
+                    <a-form-model-item label="默认权限" prop="defaultIsPublic">
+                        <a-radio-group v-model="form.defaultIsPublic">
+                            <a-radio :value="true">公开</a-radio>
+                            <a-radio :value="false">私有</a-radio>
+                        </a-radio-group>
+                    </a-form-model-item>
+                </a-form-model>
+            </a-modal>
+            <a-modal v-model="accessVisible" title="秘钥详情" @ok="accessHandleOk">
+                <a-form-model
+                        ref="accessForm"
+                        :label-col="{span:6}"
+                        :wrapper-col="{span:12}"
+                        :model="accessForm">
+                    <a-form-model-item label="用途" prop="useInfo">
+                        <a-input v-model="accessForm.useInfo"/>
+                    </a-form-model-item>
+                </a-form-model>
+            </a-modal>
+            <a-modal v-model="grantVisible" title="授权" @ok="grantOk" width="1200px">
+                <!--						show-search-->
+                <!--						@change2="handleGrantChange"-->
+                <a-transfer
+                        show-search
+                        :filterOption="filterOption"
+                        :data-source="userData"
+                        :list-style="{width: '500px'}"
+                        :operations="['添加授权', '删除授权']"
+                        :target-keys="grantUserKeys"
+                        @change="handleGrantChange"
+                >
+                    <template
+                            slot="children"
+                            slot-scope="{props: { direction, filteredItems, selectedKeys, disabled: listDisabled },on: { itemSelectAll, itemSelect },}"
+                    >
+                        <a-table
+                                :scroll="{x:450,y:400}"
+                                :row-selection="getRowSelection({ disabled: listDisabled, selectedKeys, itemSelectAll, itemSelect })"
+                                :columns="grantColumns"
+                                :data-source="filteredItems"
+                                :pagination="false"
+                                size="small"
+                                :style="{ pointerEvents: listDisabled ? 'none' : null ,'overflow-x':'auto',}"
+                                :custom-row="
 									({ key, disabled: itemDisabled }) => ({
 									  on: {
 										// click: () => {
@@ -131,29 +132,29 @@
 									  },
 									})
 								  "
-						>
-							<template slot="perms" slot-scope="text,record">
-								<a-select
-										mode="multiple"
-										:default-value="text ? text : []"
-										style="width: 100%"
-										placeholder="请选择权限"
-										@change="handlePermChange($event,record)"
-								>
-									<a-select-option v-for="item in allPerms" :key="item">
-										{{item}}
-									</a-select-option>
-								</a-select>
-							</template>
-						</a-table>
-					</template>
-					<!--					<span slot="notFoundContent">-->
-					<!--					  没数据-->
-					<!--					</span>-->
-				</a-transfer>
-			</a-modal>
-		</div>
-	</a-card>
+                        >
+                            <template slot="perms" slot-scope="text,record">
+                                <a-select
+                                        mode="multiple"
+                                        :default-value="text ? text : []"
+                                        style="width: 100%"
+                                        placeholder="请选择权限"
+                                        @change="handlePermChange($event,record)"
+                                >
+                                    <a-select-option v-for="item in allPerms" :key="item">
+                                        {{item}}
+                                    </a-select-option>
+                                </a-select>
+                            </template>
+                        </a-table>
+                    </template>
+                    <!--					<span slot="notFoundContent">-->
+                    <!--					  没数据-->
+                    <!--					</span>-->
+                </a-transfer>
+            </a-modal>
+        </div>
+    </a-card>
 
 </template>
 <script>
@@ -192,6 +193,7 @@
                 grantColumns,
                 innerData: [],
                 innerDatas: [],
+                loading: false,
                 expandedRowKeys: [],
                 expandedRow: {},
                 pagination: false,
@@ -305,7 +307,7 @@
                 }
             },
             fetchExpandedRow() {
-                if(this.expandedRow && this.expandedRow.bucketName) {
+                if (this.expandedRow && this.expandedRow.bucketName) {
                     this.$http.get("/member/access/" + this.expandedRow.bucketName).then(value => {
                         this.innerData = value.data.result;
                     });
@@ -340,9 +342,11 @@
                 this.fetch();
             },
             fetch() {
+                this.loading = true;
                 this.$http.get("/member/bucket/list").then(response => {
                     this.data = response.data.result;
-                })
+                    this.loading = false;
+                }, reason => this.loading = false);
             },
             showModal() {
                 this.visible = true;
