@@ -10,10 +10,12 @@
   "dependencies": {
     "animate.css": "^4.1.0",
     "ant-design-vue": "^1.6.2",
-    "axios": "^0.19.2",
+    "axios": "^0.21.2",
     "clipboard": "^2.0.6",
     "core-js": "^3.6.5",
+    "dplayer": "^1.27.1",
     "echarts": "^5.0.0",
+    "element-resize-detector": "^1.2.4",
     "eslint": "^7.3.0",
     "jquery": "3.5.1",
     "less-loader": "^6.1.1",

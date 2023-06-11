@@ -4,7 +4,10 @@
         <div v-else>
             <a-empty v-if="images.length === 0"/>
             <a-row v-else>
-                <a-col :span="16" :offset="4" v-for="img in images" :key="img.id"
+                <a-col :sm="{span:24,offset:0}"
+                       :md="{span:16,offset:4}"
+                       :xl="{span:12,offset:6}"
+                       v-for="img in images" :key="img.id"
                        style="margin-bottom: 10px;background: #eee;">
                     <img v-lazy="img.signUrl">
                 </a-col>
