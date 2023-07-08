@@ -79,8 +79,8 @@
                 let videoSuffix = this.fileSuffix.video;
                 let fileName = record.fileName;
                 for (let item of videoSuffix) {
-                    if (fileName.endsWith(item)) {
-                        return `/viewer/video?bucket=${this.currentBucket}&id=${record.id}&path=${this.currentDir.path}`;
+                    if (fileName.endsWith(item) || fileName.endsWith(item.toUpperCase())) {
+                        return `/viewer/video?bucket=${this.currentBucket}&id=${record.id}&path=${encodeURIComponent(this.currentDir.path)}`;
                     }
                 }
                 return record.signUrl ? record.signUrl : `/mos/${this.currentBucket}${record.urlEncodePath}?render=true`;

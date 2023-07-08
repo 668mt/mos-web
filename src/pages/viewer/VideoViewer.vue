@@ -85,7 +85,7 @@ export default {
             pages: {},
             video: undefined,
             loading: false,
-            pageSize: 50,
+            pageSize: 2000,
             lock: new Lock()
         }
     },
