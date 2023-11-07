@@ -18,14 +18,20 @@ export default {
             name: 'bounce',
             direction: 'left'
         },
-
+        bucket:undefined
     },
     getters:{
         getConfigs(state){
             return state.configs;
+        },
+        getBucket(state){
+            return state.bucket;
         }
     },
     mutations: {
+        setBucket(state,bucket){
+            state.bucket = bucket;
+        },
         setDevice(state, isMobile) {
             state.isMobile = isMobile
         },

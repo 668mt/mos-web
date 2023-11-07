@@ -52,3 +52,18 @@
   width: 100%;
   text-align: center;
 }
+.item-delete-btn{
+  color:red;
+  font-size:12px;
+  display: none;
+  margin-left: 10px;
+  &:hover{
+    color:red;
+  }
+}
+.video-list .list-item:hover .item-delete-btn{
+  display: inline;
+}
+.video-list .list-item.active .item-delete-btn{
+  display: inline;
+}

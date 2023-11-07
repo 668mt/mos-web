@@ -4,7 +4,7 @@
 			<a-col span="24">
 				<a-card>
 					<span style="font-size: 16px;">欢迎使用Mos对象存储系统！</span>
-					<a-select v-model="currentBucketName" style="width:100px;float:right;">
+					<a-select v-model="currentBucketName" style="width:100px;float:right;" @change="onBucketChange">
 						<a-select-option :key="bucket.id" v-for="bucket in buckets"
 										 :value="bucket.bucketName">
 							{{bucket.bucketName}}
@@ -110,7 +110,11 @@
                 if (this.buckets && this.buckets.length > 0) {
                     this.currentBucketName = this.buckets[0].bucketName;
                 }
-            })
+                let bucket = this.$store.getters['setting/getBucket'];
+                if(bucket){
+                    this.currentBucketName = bucket;
+                }
+            });
         },
         watch: {
             currentBucketName() {
@@ -122,6 +126,9 @@
             }
         },
         methods: {
+            onBucketChange(bucket){
+                this.$store.commit('setting/setBucket', bucket);
+            },
             format(date, fmt) {
                 var o = {
                     "M+": date.getMonth() + 1,                 //月份

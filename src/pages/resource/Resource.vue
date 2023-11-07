@@ -34,7 +34,7 @@
                         </a-select-option>
                     </a-select>
                 </a-input-search>
-                <a-select v-model="currentBucket" style="width:150px;float: right;">
+                <a-select v-model="currentBucket" style="width:150px;float: right;" @change="bucketChange">
                     <a-select-option v-for="bucket in buckets" :key="bucket.id" :value="bucket.bucketName">
                         {{ bucket.bucketName }}
                     </a-select-option>
@@ -296,7 +296,14 @@ export default {
         this.$http.get('/member/resource/file/suffix').then(value => {
             this.fileSuffix = value.data;
         });
-        resource.fetchBucket();
+        resource.fetchBucket().then(res => {
+            let bucket = this.$store.getters['setting/getBucket'];
+            if (bucket) {
+                this.currentBucket = bucket;
+            } else {
+                this.currentBucket = this.buckets[0].bucketName;
+            }
+        });
         $(".ant-table-body").css("overflow-x", "auto");
     },
     watch: {
@@ -341,6 +348,9 @@ export default {
         }
     },
     methods: {
+        bucketChange(bucket) {
+            this.$store.commit('setting/setBucket', bucket);
+        },
         // changeListType() {
         //     this.listType = this.listType === 'list' ? 'pics' : 'list';
         // },

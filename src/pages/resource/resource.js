@@ -78,11 +78,8 @@ let methods = {
         }
     },
     fetchBucket() {
-        Vue.prototype.$http.get("/member/bucket/list").then(response => {
+        return Vue.prototype.$http.get("/member/bucket/list").then(response => {
             $that.buckets = response.data.result;
-            if (!$that.currentBucket) {
-                $that.currentBucket = $that.buckets[0].bucketName;
-            }
         })
     },
     getHistoryParams(extendParams) {
