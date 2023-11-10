@@ -44,7 +44,7 @@ export default {
             let copyDom = '#copyBtn';
             let clipboard = new Clipboard(copyDom, {
                 text: () => {
-                    return `${this.video.fileName} ${this.video.signUrl}`
+                    return `${this.video.signUrl}`
                 }
             });
             clipboard.on('success', e => {
