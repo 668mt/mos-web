@@ -223,7 +223,7 @@ export default {
         setPlayUrl(video) {
             let url = video.signUrl;
             url = url.replace('render=true', 'render=false');
-            url = url.replace('localhost', '192.168.0.174');
+            // url = url.replace('localhost', '192.168.3.47');
             video.signUrl = url;
         },
     },

@@ -6,6 +6,7 @@
                 <a-button id="copyBtn" type="link" @click="initClipboard" size="small">
                     <a-icon type="copy"/>
                 </a-button>
+                <a-button type="link" :href="`${video.signUrl}&download=true`">下载</a-button>
                 <a-popconfirm @confirm="deleteVideo" title="确认删除？">
                     <a-button type="link" size="small" style="color:red;">删除</a-button>
                 </a-popconfirm>
